@@ -1041,6 +1041,18 @@ header {
   cursor: pointer;
 }
 
+.settings-transfer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.settings-transfer-btn {
+  min-height: 34px;
+  padding: 7px 12px;
+}
+
 .favorites-form-actions {
   display: flex;
   align-items: center;

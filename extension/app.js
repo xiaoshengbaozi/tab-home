@@ -61,6 +61,11 @@ const STRINGS = {
     brightness: 'Brightness',
     blur: 'Blur',
     backgroundSaved: 'Background updated',
+    exportSettings: 'Export',
+    importSettings: 'Import',
+    configExported: 'Config exported',
+    configImported: 'Config imported',
+    configImportFailed: 'Import failed',
     addToFav: 'Add to favorites', removeFromFav: 'Remove from favorites',
     pinTip: 'Pin tab', unpinTip: 'Unpin tab',
     closeThisTab: 'Close this tab',
@@ -109,6 +114,11 @@ const STRINGS = {
     brightness: '亮度',
     blur: '模糊',
     backgroundSaved: '背景已更新',
+    exportSettings: '导出',
+    importSettings: '导入',
+    configExported: '配置已导出',
+    configImported: '配置已导入',
+    configImportFailed: '导入失败',
     addToFav: '加入收藏', removeFromFav: '移除收藏',
     pinTip: '固定此标签', unpinTip: '取消固定',
     closeThisTab: '关闭此标签',
@@ -184,6 +194,105 @@ function updateHeaderDateDisplay() {
 
 function getSettingsIcon() {
   return `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9M4.5 6h2.25M8.25 6a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0ZM13.5 18h6M4.5 18h4.5m0 0a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0ZM15.75 12h3.75M4.5 12h7.5m0 0a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0Z" /></svg>`;
+}
+
+function crc32(bytes) {
+  let crc = -1;
+  for (let i = 0; i < bytes.length; i++) {
+    crc ^= bytes[i];
+    for (let j = 0; j < 8; j++) {
+      crc = (crc >>> 1) ^ (0xEDB88320 & -(crc & 1));
+    }
+  }
+  return (crc ^ -1) >>> 0;
+}
+
+function encodeUtf8(text) {
+  return new TextEncoder().encode(text);
+}
+
+function decodeUtf8(bytes) {
+  return new TextDecoder().decode(bytes);
+}
+
+function createStoredZip(filename, text) {
+  const nameBytes = encodeUtf8(filename);
+  const dataBytes = encodeUtf8(text);
+  const crc = crc32(dataBytes);
+  const localHeader = new Uint8Array(30 + nameBytes.length);
+  const centralHeader = new Uint8Array(46 + nameBytes.length);
+  const endRecord = new Uint8Array(22);
+  const localView = new DataView(localHeader.buffer);
+  const centralView = new DataView(centralHeader.buffer);
+  const endView = new DataView(endRecord.buffer);
+
+  localView.setUint32(0, 0x04034b50, true);
+  localView.setUint16(4, 20, true);
+  localView.setUint16(8, 0, true);
+  localView.setUint16(10, 0, true);
+  localView.setUint32(14, crc, true);
+  localView.setUint32(18, dataBytes.length, true);
+  localView.setUint32(22, dataBytes.length, true);
+  localView.setUint16(26, nameBytes.length, true);
+  localHeader.set(nameBytes, 30);
+
+  centralView.setUint32(0, 0x02014b50, true);
+  centralView.setUint16(4, 20, true);
+  centralView.setUint16(6, 20, true);
+  centralView.setUint16(10, 0, true);
+  centralView.setUint16(12, 0, true);
+  centralView.setUint32(16, crc, true);
+  centralView.setUint32(20, dataBytes.length, true);
+  centralView.setUint32(24, dataBytes.length, true);
+  centralView.setUint16(28, nameBytes.length, true);
+  centralView.setUint32(42, 0, true);
+  centralHeader.set(nameBytes, 46);
+
+  const centralOffset = localHeader.length + dataBytes.length;
+  endView.setUint32(0, 0x06054b50, true);
+  endView.setUint16(8, 1, true);
+  endView.setUint16(10, 1, true);
+  endView.setUint32(12, centralHeader.length, true);
+  endView.setUint32(16, centralOffset, true);
+
+  return new Blob([localHeader, dataBytes, centralHeader, endRecord], { type: 'application/zip' });
+}
+
+async function readStoredZip(file) {
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  const view = new DataView(buffer);
+  if (view.getUint32(0, true) !== 0x04034b50) throw new Error('invalid zip');
+  const compression = view.getUint16(8, true);
+  if (compression !== 0) throw new Error('unsupported compression');
+  const compressedSize = view.getUint32(18, true);
+  const nameLength = view.getUint16(26, true);
+  const extraLength = view.getUint16(28, true);
+  const dataStart = 30 + nameLength + extraLength;
+  const dataEnd = dataStart + compressedSize;
+  return decodeUtf8(bytes.slice(dataStart, dataEnd));
+}
+
+async function exportConfigZip() {
+  const allConfig = await chrome.storage.local.get(null);
+  const payload = JSON.stringify(allConfig, null, 2);
+  const blob = createStoredZip('homepage.json', payload);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'homepage.zip';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function importConfigZip(file) {
+  const text = await readStoredZip(file);
+  const parsed = JSON.parse(text);
+  await chrome.storage.local.clear();
+  await chrome.storage.local.set(parsed);
+  return parsed;
 }
 
 function normalizeSocialUrl(raw) {
@@ -511,6 +620,8 @@ function applyStaticI18n() {
   set('#backgroundClearBtn', 'clear');
   set('#backgroundBrightnessLabel', 'brightness');
   set('#backgroundBlurLabel', 'blur');
+  set('#exportSettingsBtn', 'exportSettings');
+  set('#importSettingsLabel', 'importSettings');
   const settingsFormSubmit = document.getElementById('settingsFormSubmit');
   if (settingsFormSubmit) settingsFormSubmit.textContent = t('save');
 
@@ -1962,6 +2073,12 @@ document.addEventListener('click', async (e) => {
     return;
   }
 
+  if (action === 'export-settings') {
+    await exportConfigZip();
+    showToast(t('configExported'));
+    return;
+  }
+
   if (action === 'open-socials-modal') {
     const modal = document.getElementById('socialsModal');
     if (!modal) return;
@@ -2562,6 +2679,24 @@ async function stageCustomLogoFromBlob(blob) {
 
 // ---- Logo file picker — read as base64 data URL, show in preview ----
 document.addEventListener('change', (e) => {
+  if (e.target.id === 'importSettingsInput') {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    importConfigZip(file).then(async () => {
+      await loadLang();
+      await loadTheme();
+      applyStaticI18n();
+      await renderDashboard();
+      showToast(t('configImported'));
+    }).catch((err) => {
+      console.warn('[wolfy] import config failed:', err);
+      showToast(t('configImportFailed'));
+    }).finally(() => {
+      e.target.value = '';
+    });
+    return;
+  }
+
   if (e.target.id === 'backgroundUploadInput') {
     const file = e.target.files && e.target.files[0];
     if (!file) return;

@@ -204,6 +204,12 @@
     <label class="favorites-form-label" for="backgroundBlurInput" id="backgroundBlurLabel">Blur</label>
     <input type="range" class="settings-range-input" id="backgroundBlurInput" min="0" max="24" step="1" value="0">
 
+    <div class="settings-transfer">
+      <button type="button" class="favorites-form-cancel settings-transfer-btn" data-action="export-settings" id="exportSettingsBtn">Export</button>
+      <label for="importSettingsInput" class="favorites-logo-upload settings-transfer-btn" id="importSettingsLabel">Import</label>
+      <input type="file" id="importSettingsInput" accept=".zip,application/zip" hidden>
+    </div>
+
     <div class="favorites-form-actions">
       <button type="button" class="favorites-form-cancel" data-action="cancel-settings-form">Cancel</button>
       <button type="submit" class="favorites-form-submit" id="settingsFormSubmit">Save</button>
