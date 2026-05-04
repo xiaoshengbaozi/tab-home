@@ -393,9 +393,13 @@ header {
 }
 
 .dashboard-columns .active-section {
-  padding-right: 14px;
+  padding-right: 18px;
   padding-bottom: 18px;
-  scrollbar-gutter: stable;
+  scrollbar-gutter: auto;
+}
+
+.dashboard-columns .active-section .section-header {
+  padding-top: 6px;
 }
 
 .dashboard-columns .active-section::-webkit-scrollbar {
@@ -403,7 +407,12 @@ header {
 }
 
 .dashboard-columns .active-section::-webkit-scrollbar-track {
-  margin-block: 14px;
+  margin-block: 20px;
+  background: transparent;
+}
+
+.dashboard-columns .active-section::-webkit-scrollbar-thumb {
+  border-radius: 999px;
 }
 
 .favorites-column {
@@ -427,6 +436,7 @@ header {
 .favorites-column .section-header {
   gap: 8px;
   margin-bottom: 16px;
+  padding-top: 0;
 }
 
 .section-header h2 {
@@ -460,19 +470,17 @@ header {
 
 .section-action .action-btn {
   font-size: 11px;
+  padding: 3px 10px;
 }
 
 .active-subsection {
-  padding-top: 4px;
+  padding-top: 0;
 }
 
-.active-subsection + .active-subsection {
-  margin-top: 18px;
-}
 
 .favorites-add-btn {
-  width: 34px;
-  height: 34px;
+  width: 26px;
+  height: 26px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
