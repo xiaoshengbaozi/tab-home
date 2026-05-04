@@ -110,6 +110,30 @@ git clone https://github.com/wolfyxbt/tab-home.git
 
 ---
 
+## Supabase 云同步（进行中）
+
+项目已经开始为 Supabase 多用户同步做基础铺设。
+
+当前仓库里有两部分可直接使用：
+
+- 工作流程文档：[`docs/supabase-sync-workflow.md`](docs/supabase-sync-workflow.md)
+- 数据库 schema：[`supabase/schema.sql`](supabase/schema.sql)
+
+建议接入顺序：
+
+1. 在 Supabase 创建项目
+2. 运行 `supabase/schema.sql`
+3. 创建背景图 Storage bucket
+4. 复制 `extension/config.local.example.js` 为 `extension/config.local.js`
+5. 在 `config.local.js` 里填写：
+   - `LOCAL_SUPABASE_PROJECT_URL`
+   - `LOCAL_SUPABASE_ANON_KEY`
+6. 下一步再接登录和真实同步逻辑
+
+当前扩展会优先从 `extension/config.local.js` 读取 Supabase 配置。
+
+---
+
 ## License
 
 MIT

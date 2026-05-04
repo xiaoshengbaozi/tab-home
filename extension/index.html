@@ -189,30 +189,68 @@
 
 <div class="favorites-modal" id="settingsModal" style="display:none">
   <form class="favorites-form favorites-form-modal" id="settingsForm">
-    <label class="favorites-form-label" for="backgroundUrlInput" id="backgroundUrlLabel">Background image URL</label>
-    <input type="text" class="favorites-form-input" id="backgroundUrlInput" placeholder="https://images.example.com/wallpaper.jpg" autocomplete="off" spellcheck="false">
+    <div class="settings-shell">
+      <div class="settings-auth-card">
+        <div class="settings-auth-status-row">
+          <span class="favorites-form-label" id="syncStatusTitle">Sync status</span>
+          <div class="settings-status-stack">
+            <span class="settings-auth-status" id="syncStatusValue">Not configured</span>
+            <span class="settings-sync-time" id="syncLastSync">Not synced yet</span>
+          </div>
+        </div>
 
-    <div class="favorites-form-logo">
-      <label for="backgroundUploadInput" class="favorites-logo-upload" id="backgroundUploadLabel">Upload image</label>
-      <input type="file" id="backgroundUploadInput" accept="image/*" hidden>
-      <button type="button" class="favorites-logo-reset" data-action="clear-background-image" id="backgroundClearBtn">Clear</button>
-    </div>
+        <div class="settings-auth-guest" id="settingsAuthGuest">
+          <label class="favorites-form-label" for="syncEmailInput" id="syncEmailLabel">Email</label>
+          <input type="email" class="favorites-form-input" id="syncEmailInput" placeholder="you@example.com" autocomplete="off" spellcheck="false">
 
-    <label class="favorites-form-label" for="backgroundBrightnessInput" id="backgroundBrightnessLabel">Brightness</label>
-    <input type="range" class="settings-range-input" id="backgroundBrightnessInput" min="35" max="100" step="1" value="72">
+          <label class="favorites-form-label" for="syncPasswordInput" id="syncPasswordLabel">Password</label>
+          <input type="password" class="favorites-form-input" id="syncPasswordInput" placeholder="At least 6 characters" autocomplete="off" spellcheck="false">
 
-    <label class="favorites-form-label" for="backgroundBlurInput" id="backgroundBlurLabel">Blur</label>
-    <input type="range" class="settings-range-input" id="backgroundBlurInput" min="0" max="24" step="1" value="0">
+          <div class="settings-transfer settings-auth-actions">
+            <button type="button" class="favorites-form-submit settings-transfer-btn" data-action="sign-in-sync" id="syncSignInBtn">Sign in</button>
+            <button type="button" class="favorites-form-cancel settings-transfer-btn" data-action="sign-up-sync" id="syncSignUpBtn">Create account</button>
+          </div>
+        </div>
 
-    <div class="settings-transfer">
-      <button type="button" class="favorites-form-cancel settings-transfer-btn" data-action="export-settings" id="exportSettingsBtn">Export</button>
-      <label for="importSettingsInput" class="favorites-logo-upload settings-transfer-btn" id="importSettingsLabel">Import</label>
-      <input type="file" id="importSettingsInput" accept=".zip,application/zip" hidden>
-    </div>
+        <div class="settings-auth-user" id="settingsAuthUser" style="display:none">
+          <div class="settings-user-chip">
+            <div class="settings-user-avatar" id="syncUserAvatar">U</div>
+            <div class="settings-user-meta">
+              <div class="settings-user-email" id="syncUserEmail">Signed in</div>
+              <div class="settings-user-subtitle" id="syncUserSubtitle">Cloud sync active</div>
+            </div>
+          </div>
+          <div class="settings-transfer settings-auth-actions">
+            <button type="button" class="favorites-form-cancel settings-transfer-btn" data-action="sign-out-sync" id="syncSignOutBtn">Sign out</button>
+          </div>
+        </div>
+      </div>
 
-    <div class="favorites-form-actions">
-      <button type="button" class="favorites-form-cancel" data-action="cancel-settings-form">Cancel</button>
-      <button type="submit" class="favorites-form-submit" id="settingsFormSubmit">Save</button>
+      <div class="settings-background-panel" id="settingsBackgroundPanel" style="display:none">
+        <div class="settings-section-head">
+          <span class="favorites-form-label">Background</span>
+        </div>
+
+        <label class="favorites-form-label" for="backgroundUrlInput" id="backgroundUrlLabel">Background image URL</label>
+        <input type="text" class="favorites-form-input" id="backgroundUrlInput" placeholder="https://images.example.com/wallpaper.jpg" autocomplete="off" spellcheck="false">
+
+        <div class="favorites-form-logo">
+          <label for="backgroundUploadInput" class="favorites-logo-upload" id="backgroundUploadLabel">Upload image</label>
+          <input type="file" id="backgroundUploadInput" accept="image/*" hidden>
+          <button type="button" class="favorites-logo-reset" data-action="clear-background-image" id="backgroundClearBtn">Clear</button>
+        </div>
+
+        <label class="favorites-form-label" for="backgroundBrightnessInput" id="backgroundBrightnessLabel">Brightness</label>
+        <input type="range" class="settings-range-input" id="backgroundBrightnessInput" min="35" max="100" step="1" value="72">
+
+        <label class="favorites-form-label" for="backgroundBlurInput" id="backgroundBlurLabel">Blur</label>
+        <input type="range" class="settings-range-input" id="backgroundBlurInput" min="0" max="24" step="1" value="0">
+      </div>
+
+      <div class="favorites-form-actions">
+        <button type="button" class="favorites-form-cancel" data-action="cancel-settings-form">Cancel</button>
+        <button type="submit" class="favorites-form-submit" id="settingsFormSubmit">Save</button>
+      </div>
     </div>
   </form>
 </div>

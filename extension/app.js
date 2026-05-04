@@ -63,9 +63,30 @@ const STRINGS = {
     backgroundSaved: 'Background updated',
     exportSettings: 'Export',
     importSettings: 'Import',
-    configExported: 'Config exported',
-    configImported: 'Config imported',
-    configImportFailed: 'Import failed',
+    supabaseProjectUrl: 'Supabase project URL',
+    supabaseAnonKey: 'Supabase anon key',
+    syncReady: 'Sync configured',
+    syncNotConfigured: 'Sync not configured',
+    syncStatus: 'Sync status',
+    email: 'Email',
+    password: 'Password',
+    signIn: 'Sign in',
+    createAccount: 'Create account',
+    signOut: 'Sign out',
+    syncSignedOut: 'Signed out',
+    syncSignedIn: 'Signed in',
+    syncSigningInFailed: 'Sign-in failed',
+    syncSigningUpFailed: 'Sign-up failed',
+    syncSignOutDone: 'Signed out',
+    syncMissingConfig: 'Add Supabase URL and anon key first',
+    syncAutoOn: 'Auto sync enabled',
+    syncAutoFailed: 'Auto sync failed',
+    syncLoginRequired: 'Sign in first',
+    syncEmailConfirmRequired: 'Account created. Check your email confirmation settings.',
+    syncSignedInButCloudFailed: 'Signed in, but cloud sync setup is incomplete',
+    syncActiveSubtitle: 'Cloud sync active',
+    syncNever: 'Not synced yet',
+    syncLastAt: (value) => `Last sync ${value}`,
     addToFav: 'Add to favorites', removeFromFav: 'Remove from favorites',
     pinTip: 'Pin tab', unpinTip: 'Unpin tab',
     closeThisTab: 'Close this tab',
@@ -116,9 +137,30 @@ const STRINGS = {
     backgroundSaved: '背景已更新',
     exportSettings: '导出',
     importSettings: '导入',
-    configExported: '配置已导出',
-    configImported: '配置已导入',
-    configImportFailed: '导入失败',
+    supabaseProjectUrl: 'Supabase 项目地址',
+    supabaseAnonKey: 'Supabase 匿名密钥',
+    syncReady: '同步已配置',
+    syncNotConfigured: '同步未配置',
+    syncStatus: '同步状态',
+    email: '邮箱',
+    password: '密码',
+    signIn: '登录',
+    createAccount: '创建账号',
+    signOut: '退出登录',
+    syncSignedOut: '未登录',
+    syncSignedIn: '已登录',
+    syncSigningInFailed: '登录失败',
+    syncSigningUpFailed: '注册失败',
+    syncSignOutDone: '已退出登录',
+    syncMissingConfig: '请先填写 Supabase URL 和 anon key',
+    syncAutoOn: '自动同步已开启',
+    syncAutoFailed: '自动同步失败',
+    syncLoginRequired: '请先登录',
+    syncEmailConfirmRequired: '账号已创建，请检查邮箱确认设置。',
+    syncSignedInButCloudFailed: '已登录，但云端同步配置还不完整',
+    syncActiveSubtitle: '云端同步已启用',
+    syncNever: '尚未同步',
+    syncLastAt: (value) => `上次同步 ${value}`,
     addToFav: '加入收藏', removeFromFav: '移除收藏',
     pinTip: '固定此标签', unpinTip: '取消固定',
     closeThisTab: '关闭此标签',
@@ -152,6 +194,21 @@ const DEFAULT_BACKGROUND_SETTINGS = {
   brightness: 72,
   blur: 0,
 };
+const DEFAULT_SYNC_SETTINGS = {
+  provider: 'supabase',
+  projectUrl: '',
+  anonKey: '',
+  enabled: false,
+  lastSyncAt: null,
+  lastSyncError: '',
+};
+const DEFAULT_SYNC_SESSION = {
+  accessToken: '',
+  refreshToken: '',
+  user: null,
+};
+let syncPushTimer = null;
+let suppressAutoSync = false;
 let weatherCache = {
   fetchedAt: 0,
   displayByLang: { en: '', zh: '' },
@@ -196,105 +253,6 @@ function getSettingsIcon() {
   return `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9M4.5 6h2.25M8.25 6a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0ZM13.5 18h6M4.5 18h4.5m0 0a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0ZM15.75 12h3.75M4.5 12h7.5m0 0a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0Z" /></svg>`;
 }
 
-function crc32(bytes) {
-  let crc = -1;
-  for (let i = 0; i < bytes.length; i++) {
-    crc ^= bytes[i];
-    for (let j = 0; j < 8; j++) {
-      crc = (crc >>> 1) ^ (0xEDB88320 & -(crc & 1));
-    }
-  }
-  return (crc ^ -1) >>> 0;
-}
-
-function encodeUtf8(text) {
-  return new TextEncoder().encode(text);
-}
-
-function decodeUtf8(bytes) {
-  return new TextDecoder().decode(bytes);
-}
-
-function createStoredZip(filename, text) {
-  const nameBytes = encodeUtf8(filename);
-  const dataBytes = encodeUtf8(text);
-  const crc = crc32(dataBytes);
-  const localHeader = new Uint8Array(30 + nameBytes.length);
-  const centralHeader = new Uint8Array(46 + nameBytes.length);
-  const endRecord = new Uint8Array(22);
-  const localView = new DataView(localHeader.buffer);
-  const centralView = new DataView(centralHeader.buffer);
-  const endView = new DataView(endRecord.buffer);
-
-  localView.setUint32(0, 0x04034b50, true);
-  localView.setUint16(4, 20, true);
-  localView.setUint16(8, 0, true);
-  localView.setUint16(10, 0, true);
-  localView.setUint32(14, crc, true);
-  localView.setUint32(18, dataBytes.length, true);
-  localView.setUint32(22, dataBytes.length, true);
-  localView.setUint16(26, nameBytes.length, true);
-  localHeader.set(nameBytes, 30);
-
-  centralView.setUint32(0, 0x02014b50, true);
-  centralView.setUint16(4, 20, true);
-  centralView.setUint16(6, 20, true);
-  centralView.setUint16(10, 0, true);
-  centralView.setUint16(12, 0, true);
-  centralView.setUint32(16, crc, true);
-  centralView.setUint32(20, dataBytes.length, true);
-  centralView.setUint32(24, dataBytes.length, true);
-  centralView.setUint16(28, nameBytes.length, true);
-  centralView.setUint32(42, 0, true);
-  centralHeader.set(nameBytes, 46);
-
-  const centralOffset = localHeader.length + dataBytes.length;
-  endView.setUint32(0, 0x06054b50, true);
-  endView.setUint16(8, 1, true);
-  endView.setUint16(10, 1, true);
-  endView.setUint32(12, centralHeader.length, true);
-  endView.setUint32(16, centralOffset, true);
-
-  return new Blob([localHeader, dataBytes, centralHeader, endRecord], { type: 'application/zip' });
-}
-
-async function readStoredZip(file) {
-  const buffer = await file.arrayBuffer();
-  const bytes = new Uint8Array(buffer);
-  const view = new DataView(buffer);
-  if (view.getUint32(0, true) !== 0x04034b50) throw new Error('invalid zip');
-  const compression = view.getUint16(8, true);
-  if (compression !== 0) throw new Error('unsupported compression');
-  const compressedSize = view.getUint32(18, true);
-  const nameLength = view.getUint16(26, true);
-  const extraLength = view.getUint16(28, true);
-  const dataStart = 30 + nameLength + extraLength;
-  const dataEnd = dataStart + compressedSize;
-  return decodeUtf8(bytes.slice(dataStart, dataEnd));
-}
-
-async function exportConfigZip() {
-  const allConfig = await chrome.storage.local.get(null);
-  const payload = JSON.stringify(allConfig, null, 2);
-  const blob = createStoredZip('homepage.json', payload);
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'homepage.zip';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-async function importConfigZip(file) {
-  const text = await readStoredZip(file);
-  const parsed = JSON.parse(text);
-  await chrome.storage.local.clear();
-  await chrome.storage.local.set(parsed);
-  return parsed;
-}
-
 function normalizeSocialUrl(raw) {
   const text = String(raw || '').trim();
   if (!text) return '';
@@ -331,6 +289,353 @@ async function getBackgroundSettings() {
 
 async function saveBackgroundSettings(settings) {
   await chrome.storage.local.set({ backgroundSettings: settings });
+}
+
+async function getSyncSettings() {
+  const { syncSettings = {} } = await chrome.storage.local.get('syncSettings');
+  const localProjectUrl = (typeof LOCAL_SUPABASE_PROJECT_URL !== 'undefined' && LOCAL_SUPABASE_PROJECT_URL)
+    ? String(LOCAL_SUPABASE_PROJECT_URL).trim()
+    : '';
+  const localAnonKey = (typeof LOCAL_SUPABASE_ANON_KEY !== 'undefined' && LOCAL_SUPABASE_ANON_KEY)
+    ? String(LOCAL_SUPABASE_ANON_KEY).trim()
+    : '';
+  const merged = {
+    ...DEFAULT_SYNC_SETTINGS,
+    ...(syncSettings && typeof syncSettings === 'object' ? syncSettings : {}),
+  };
+  if (localProjectUrl) merged.projectUrl = localProjectUrl;
+  if (localAnonKey) merged.anonKey = localAnonKey;
+  merged.enabled = !!(merged.projectUrl && merged.anonKey);
+  return {
+    ...merged,
+  };
+}
+
+async function saveSyncSettings(settings) {
+  await chrome.storage.local.set({ syncSettings: settings });
+}
+
+async function getSyncSession() {
+  const { syncSession = {} } = await chrome.storage.local.get('syncSession');
+  return {
+    ...DEFAULT_SYNC_SESSION,
+    ...(syncSession && typeof syncSession === 'object' ? syncSession : {}),
+  };
+}
+
+async function saveSyncSession(session) {
+  await chrome.storage.local.set({ syncSession: session });
+}
+
+async function clearSyncSession() {
+  await chrome.storage.local.set({ syncSession: DEFAULT_SYNC_SESSION });
+}
+
+async function scheduleAutoSyncPush(delay = 900) {
+  const syncSettings = await getSyncSettings();
+  const syncSession = await getSyncSession();
+  if (!syncSettings.enabled) return;
+  if (!syncSession.accessToken || !syncSession.user || !syncSession.user.id) return;
+  if (suppressAutoSync) return;
+
+  if (syncPushTimer) clearTimeout(syncPushTimer);
+  syncPushTimer = setTimeout(async () => {
+    syncPushTimer = null;
+    try {
+      await pushLocalDataToSupabase();
+      const current = await getSyncSettings();
+      await saveSyncSettings({ ...current, lastSyncAt: toIsoNow(), lastSyncError: '' });
+      await renderSyncStatus();
+    } catch (err) {
+      console.warn('[wolfy] auto sync push failed:', err);
+      const current = await getSyncSettings();
+      await saveSyncSettings({ ...current, lastSyncError: String(err.message || err) });
+      await renderSyncStatus();
+      showToast(t('syncAutoFailed'));
+    }
+  }, delay);
+}
+
+function getSupabaseAuthBase(syncSettings) {
+  return `${String(syncSettings.projectUrl || '').replace(/\/+$/, '')}/auth/v1`;
+}
+
+async function supabaseAuthRequest(path, { method = 'GET', syncSettings, body, accessToken } = {}) {
+  const base = getSupabaseAuthBase(syncSettings);
+  const headers = {
+    apikey: syncSettings.anonKey,
+  };
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  if (body) headers['Content-Type'] = 'application/json';
+
+  const resp = await fetch(`${base}${path}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  const text = await resp.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!resp.ok) {
+    const message = data && (data.msg || data.error_description || data.error || data.message);
+    throw new Error(message || `auth ${resp.status}`);
+  }
+  return data;
+}
+
+async function signUpWithSupabase(email, password, syncSettings) {
+  return supabaseAuthRequest('/signup', {
+    method: 'POST',
+    syncSettings,
+    body: { email, password },
+  });
+}
+
+async function signInWithSupabase(email, password, syncSettings) {
+  return supabaseAuthRequest('/token?grant_type=password', {
+    method: 'POST',
+    syncSettings,
+    body: { email, password },
+  });
+}
+
+async function fetchSupabaseUser(syncSettings, accessToken) {
+  return supabaseAuthRequest('/user', {
+    method: 'GET',
+    syncSettings,
+    accessToken,
+  });
+}
+
+function getSupabaseRestBase(syncSettings) {
+  return `${String(syncSettings.projectUrl || '').replace(/\/+$/, '')}/rest/v1`;
+}
+
+async function supabaseRestRequest(path, { method = 'GET', syncSettings, accessToken, body, prefer } = {}) {
+  const headers = {
+    apikey: syncSettings.anonKey,
+    Authorization: `Bearer ${accessToken}`,
+  };
+  if (body) headers['Content-Type'] = 'application/json';
+  if (prefer) headers.Prefer = prefer;
+
+  const resp = await fetch(`${getSupabaseRestBase(syncSettings)}${path}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  const text = await resp.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!resp.ok) {
+    const message = data && (data.message || data.error || data.msg);
+    throw new Error(message || `rest ${resp.status}`);
+  }
+  return data;
+}
+
+function toIsoNow() {
+  return new Date().toISOString();
+}
+
+function formatSyncTime(value) {
+  if (!value) return t('syncNever');
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return t('syncNever');
+  try {
+    const locale = currentLang === 'zh' ? 'zh-CN' : 'en-US';
+    return t('syncLastAt', new Intl.DateTimeFormat(locale, {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(date));
+  } catch {
+    return t('syncNever');
+  }
+}
+
+async function pushLocalDataToSupabase() {
+  const syncSettings = await getSyncSettings();
+  const syncSession = await getSyncSession();
+  if (!syncSession.accessToken || !syncSession.user || !syncSession.user.id) throw new Error('not signed in');
+
+  const userId = syncSession.user.id;
+  const [favorites, socialLinks, backgroundSettings] = await Promise.all([
+    getFavorites(),
+    getSocialLinks(),
+    getBackgroundSettings(),
+  ]);
+  const { theme = 'light', lang = 'en' } = await chrome.storage.local.get(['theme', 'lang']);
+  const now = toIsoNow();
+
+  await supabaseRestRequest(`/user_settings?user_id=eq.${encodeURIComponent(userId)}`, {
+    method: 'POST',
+    syncSettings,
+    accessToken: syncSession.accessToken,
+    prefer: 'resolution=merge-duplicates,return=minimal',
+    body: [{
+      user_id: userId,
+      theme,
+      lang,
+      background_image_url: backgroundSettings.imageUrl || backgroundSettings.imageDataUrl || '',
+      background_brightness: backgroundSettings.brightness ?? DEFAULT_BACKGROUND_SETTINGS.brightness,
+      background_blur: backgroundSettings.blur ?? DEFAULT_BACKGROUND_SETTINGS.blur,
+      updated_at: now,
+    }],
+  });
+
+  await supabaseRestRequest(`/social_links?user_id=eq.${encodeURIComponent(userId)}`, {
+    method: 'POST',
+    syncSettings,
+    accessToken: syncSession.accessToken,
+    prefer: 'resolution=merge-duplicates,return=minimal',
+    body: [{
+      user_id: userId,
+      x_url: socialLinks.x || '',
+      instagram_url: socialLinks.instagram || '',
+      github_url: socialLinks.github || '',
+      updated_at: now,
+    }],
+  });
+
+  await supabaseRestRequest(`/favorites?user_id=eq.${encodeURIComponent(userId)}`, {
+    method: 'DELETE',
+    syncSettings,
+    accessToken: syncSession.accessToken,
+  });
+
+  if (favorites.length > 0) {
+    await supabaseRestRequest('/favorites', {
+      method: 'POST',
+      syncSettings,
+      accessToken: syncSession.accessToken,
+      prefer: 'return=minimal',
+      body: favorites.map((fav) => ({
+        user_id: userId,
+        url: fav.url,
+        title: fav.title,
+        slot: fav.slot ?? 0,
+        custom_logo_url: fav.customLogo || '',
+        created_at: fav.addedAt || now,
+        updated_at: now,
+      })),
+    });
+  }
+}
+
+async function pullCloudDataFromSupabase() {
+  const syncSettings = await getSyncSettings();
+  const syncSession = await getSyncSession();
+  if (!syncSession.accessToken || !syncSession.user || !syncSession.user.id) throw new Error('not signed in');
+
+  const userId = syncSession.user.id;
+  const [settingsRows, socialRows, favoritesRows] = await Promise.all([
+    supabaseRestRequest(`/user_settings?user_id=eq.${encodeURIComponent(userId)}&select=*`, {
+      method: 'GET',
+      syncSettings,
+      accessToken: syncSession.accessToken,
+    }),
+    supabaseRestRequest(`/social_links?user_id=eq.${encodeURIComponent(userId)}&select=*`, {
+      method: 'GET',
+      syncSettings,
+      accessToken: syncSession.accessToken,
+    }),
+    supabaseRestRequest(`/favorites?user_id=eq.${encodeURIComponent(userId)}&select=*&order=slot.asc`, {
+      method: 'GET',
+      syncSettings,
+      accessToken: syncSession.accessToken,
+    }),
+  ]);
+
+  const settingsRow = Array.isArray(settingsRows) ? settingsRows[0] : null;
+  const socialRow = Array.isArray(socialRows) ? socialRows[0] : null;
+  const favorites = Array.isArray(favoritesRows) ? favoritesRows : [];
+
+  suppressAutoSync = true;
+  try {
+    if (settingsRow) {
+      if (settingsRow.theme) await chrome.storage.local.set({ theme: settingsRow.theme });
+      if (settingsRow.lang) await chrome.storage.local.set({ lang: settingsRow.lang });
+      await saveBackgroundSettings({
+        imageUrl: settingsRow.background_image_url || '',
+        imageDataUrl: '',
+        brightness: settingsRow.background_brightness ?? DEFAULT_BACKGROUND_SETTINGS.brightness,
+        blur: settingsRow.background_blur ?? DEFAULT_BACKGROUND_SETTINGS.blur,
+      });
+    }
+
+    if (socialRow) {
+      await saveSocialLinks({
+        x: socialRow.x_url || '',
+        instagram: socialRow.instagram_url || '',
+        github: socialRow.github_url || '',
+      });
+    }
+
+    await chrome.storage.local.set({
+      favorites: favorites.map((fav, index) => ({
+        id: `${fav.id || Date.now()}-${index}`,
+        url: fav.url,
+        title: fav.title,
+        addedAt: fav.created_at || toIsoNow(),
+        slot: typeof fav.slot === 'number' ? fav.slot : index,
+        customLogo: fav.custom_logo_url || undefined,
+      })),
+    });
+
+    await loadLang();
+    await loadTheme();
+    applyBackgroundSettings(await getBackgroundSettings());
+    const current = await getSyncSettings();
+    await saveSyncSettings({ ...current, lastSyncAt: toIsoNow(), lastSyncError: '' });
+  } finally {
+    setTimeout(() => { suppressAutoSync = false; }, 300);
+  }
+}
+
+async function renderSyncStatus() {
+  const syncSettings = await getSyncSettings();
+  const syncSession = await getSyncSession();
+  const statusEl = document.getElementById('syncStatusValue');
+  const syncTimeEl = document.getElementById('syncLastSync');
+  const guestPanel = document.getElementById('settingsAuthGuest');
+  const userPanel = document.getElementById('settingsAuthUser');
+  const backgroundPanel = document.getElementById('settingsBackgroundPanel');
+  const userEmail = document.getElementById('syncUserEmail');
+  const userAvatar = document.getElementById('syncUserAvatar');
+  const userSubtitle = document.getElementById('syncUserSubtitle');
+  if (!statusEl) return;
+
+  if (!syncSettings.projectUrl || !syncSettings.anonKey) {
+    statusEl.textContent = t('syncNotConfigured');
+    statusEl.dataset.state = 'idle';
+    if (syncTimeEl) syncTimeEl.textContent = t('syncNever');
+    if (guestPanel) guestPanel.style.display = 'block';
+    if (userPanel) userPanel.style.display = 'none';
+    if (backgroundPanel) backgroundPanel.style.display = 'none';
+    return;
+  }
+
+  if (syncSession && syncSession.user && syncSession.user.email) {
+    statusEl.textContent = `${t('syncSignedIn')} · ${syncSession.user.email}`;
+    statusEl.dataset.state = 'ready';
+    if (syncTimeEl) syncTimeEl.textContent = formatSyncTime(syncSettings.lastSyncAt);
+    if (guestPanel) guestPanel.style.display = 'none';
+    if (userPanel) userPanel.style.display = 'block';
+    if (backgroundPanel) backgroundPanel.style.display = 'block';
+    if (userEmail) userEmail.textContent = syncSession.user.email;
+    if (userAvatar) userAvatar.textContent = String(syncSession.user.email || 'U').trim().charAt(0).toUpperCase() || 'U';
+    if (userSubtitle) userSubtitle.textContent = t('syncActiveSubtitle');
+    return;
+  }
+
+  statusEl.textContent = t('syncReady');
+  statusEl.dataset.state = 'configured';
+  if (syncTimeEl) syncTimeEl.textContent = formatSyncTime(syncSettings.lastSyncAt);
+  if (guestPanel) guestPanel.style.display = 'block';
+  if (userPanel) userPanel.style.display = 'none';
+  if (backgroundPanel) backgroundPanel.style.display = 'none';
 }
 
 function applyBackgroundSettings(settings) {
@@ -615,15 +920,23 @@ function applyStaticI18n() {
   set('#footerSocialsEdit', 'editLinks');
   const socialsFormSubmit = document.getElementById('socialsFormSubmit');
   if (socialsFormSubmit) socialsFormSubmit.textContent = t('save');
+  set('#syncStatusTitle', 'syncStatus');
+  set('#syncEmailLabel', 'email');
+  set('#syncPasswordLabel', 'password');
+  const syncSignInBtn = document.getElementById('syncSignInBtn');
+  if (syncSignInBtn) syncSignInBtn.textContent = t('signIn');
+  const syncSignUpBtn = document.getElementById('syncSignUpBtn');
+  if (syncSignUpBtn) syncSignUpBtn.textContent = t('createAccount');
+  const syncSignOutBtn = document.getElementById('syncSignOutBtn');
+  if (syncSignOutBtn) syncSignOutBtn.textContent = t('signOut');
   set('#backgroundUrlLabel', 'backgroundUrl');
   set('#backgroundUploadLabel', 'uploadImage');
   set('#backgroundClearBtn', 'clear');
   set('#backgroundBrightnessLabel', 'brightness');
   set('#backgroundBlurLabel', 'blur');
-  set('#exportSettingsBtn', 'exportSettings');
-  set('#importSettingsLabel', 'importSettings');
   const settingsFormSubmit = document.getElementById('settingsFormSubmit');
   if (settingsFormSubmit) settingsFormSubmit.textContent = t('save');
+  void renderSyncStatus();
 
   // tab-out duplicate banner — only the suffix and button label
   // (the count number lives in #tabOutDupeCount and is set by JS)
@@ -1136,6 +1449,7 @@ function animateCardOut(card) {
  */
 function showToast(message) {
   const toast = document.getElementById('toast');
+  if (!toast) return;
   document.getElementById('toastText').textContent = message;
   toast.classList.add('visible');
   setTimeout(() => toast.classList.remove('visible'), 2500);
@@ -2040,10 +2354,16 @@ document.addEventListener('click', async (e) => {
     const modal = document.getElementById('settingsModal');
     if (!modal) return;
     const settings = await getBackgroundSettings();
+    const syncSettings = await getSyncSettings();
+    const syncSession = await getSyncSession();
+    const syncEmailInput = document.getElementById('syncEmailInput');
+    const syncPasswordInput = document.getElementById('syncPasswordInput');
     const urlInput = document.getElementById('backgroundUrlInput');
     const brightnessInput = document.getElementById('backgroundBrightnessInput');
     const blurInput = document.getElementById('backgroundBlurInput');
     const uploadInput = document.getElementById('backgroundUploadInput');
+    if (syncEmailInput) syncEmailInput.value = (syncSession.user && syncSession.user.email) ? syncSession.user.email : '';
+    if (syncPasswordInput) syncPasswordInput.value = '';
     if (urlInput) urlInput.value = settings.imageUrl || '';
     if (brightnessInput) brightnessInput.value = String(settings.brightness ?? DEFAULT_BACKGROUND_SETTINGS.brightness);
     if (blurInput) blurInput.value = String(settings.blur ?? DEFAULT_BACKGROUND_SETTINGS.blur);
@@ -2052,7 +2372,10 @@ document.addEventListener('click', async (e) => {
       delete uploadInput.dataset.pendingImage;
     }
     modal.style.display = 'flex';
-    if (urlInput) setTimeout(() => urlInput.focus(), 0);
+    await renderSyncStatus();
+    const shouldFocusEmail = !(syncSession && syncSession.user && syncSession.user.email);
+    if (shouldFocusEmail && syncEmailInput) setTimeout(() => syncEmailInput.focus(), 0);
+    else if (urlInput) setTimeout(() => urlInput.focus(), 0);
     return;
   }
 
@@ -2073,9 +2396,74 @@ document.addEventListener('click', async (e) => {
     return;
   }
 
-  if (action === 'export-settings') {
-    await exportConfigZip();
-    showToast(t('configExported'));
+  if (action === 'sign-up-sync' || action === 'sign-in-sync') {
+    const syncSettings = await getSyncSettings();
+    if (!syncSettings.projectUrl || !syncSettings.anonKey) {
+      showToast(t('syncMissingConfig'));
+      return;
+    }
+
+    const email = document.getElementById('syncEmailInput')?.value.trim() || '';
+    const password = document.getElementById('syncPasswordInput')?.value || '';
+    if (!email || !password) {
+      showToast(action === 'sign-up-sync' ? t('syncSigningUpFailed') : t('syncSigningInFailed'));
+      return;
+    }
+
+    try {
+      if (action === 'sign-up-sync') {
+        const result = await signUpWithSupabase(email, password, syncSettings);
+        if (result && result.access_token) {
+          const user = result.user || await fetchSupabaseUser(syncSettings, result.access_token);
+          await saveSyncSession({
+            accessToken: result.access_token || '',
+            refreshToken: result.refresh_token || '',
+            user: user || null,
+          });
+        } else {
+          showToast(t('syncEmailConfirmRequired'));
+          return;
+        }
+      } else {
+        const result = await signInWithSupabase(email, password, syncSettings);
+        const user = result.user || await fetchSupabaseUser(syncSettings, result.access_token);
+        await saveSyncSession({
+          accessToken: result.access_token || '',
+          refreshToken: result.refresh_token || '',
+          user: user || null,
+        });
+      }
+      await renderSyncStatus();
+      try {
+        await pullCloudDataFromSupabase();
+        await renderDashboard();
+        showToast(t('syncAutoOn'));
+      } catch (syncErr) {
+        console.warn('[wolfy] post-login sync failed:', syncErr);
+        const message = syncErr && syncErr.message
+          ? `${t('syncSignedInButCloudFailed')}: ${syncErr.message}`
+          : t('syncSignedInButCloudFailed');
+        showToast(message);
+      }
+    } catch (err) {
+      console.warn('[wolfy] supabase auth failed:', err);
+      const fallback = action === 'sign-up-sync' ? t('syncSigningUpFailed') : t('syncSigningInFailed');
+      const message = err && err.message ? `${fallback}: ${err.message}` : fallback;
+      showToast(message);
+    }
+    return;
+  }
+
+  if (action === 'sign-out-sync') {
+    await clearSyncSession();
+    if (syncPushTimer) {
+      clearTimeout(syncPushTimer);
+      syncPushTimer = null;
+    }
+    const syncPasswordInput = document.getElementById('syncPasswordInput');
+    if (syncPasswordInput) syncPasswordInput.value = '';
+    await renderSyncStatus();
+    showToast(t('syncSignOutDone'));
     return;
   }
 
@@ -2679,24 +3067,6 @@ async function stageCustomLogoFromBlob(blob) {
 
 // ---- Logo file picker — read as base64 data URL, show in preview ----
 document.addEventListener('change', (e) => {
-  if (e.target.id === 'importSettingsInput') {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    importConfigZip(file).then(async () => {
-      await loadLang();
-      await loadTheme();
-      applyStaticI18n();
-      await renderDashboard();
-      showToast(t('configImported'));
-    }).catch((err) => {
-      console.warn('[wolfy] import config failed:', err);
-      showToast(t('configImportFailed'));
-    }).finally(() => {
-      e.target.value = '';
-    });
-    return;
-  }
-
   if (e.target.id === 'backgroundUploadInput') {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
@@ -2969,11 +3339,16 @@ if (chrome.tabs && chrome.tabs.onCreated) {
 // Storage changes can come from another context (e.g. right-click menu in
 // background.js adds a favorite) — re-render so the page stays in sync.
 if (chrome.storage && chrome.storage.onChanged) {
-  chrome.storage.onChanged.addListener((changes, area) => {
+  chrome.storage.onChanged.addListener(async (changes, area) => {
     if (area !== 'local') return;
-    if (!changes.favorites) return;
-    if (_suppressFavReRender) return;   // local iconUrl batch write — skip
-    renderFavoritesColumn();
+    if (changes.favorites && !_suppressFavReRender) {
+      renderFavoritesColumn();
+    }
+
+    const syncRelevantKeys = ['favorites', 'socialLinks', 'backgroundSettings', 'theme', 'lang'];
+    if (syncRelevantKeys.some((key) => key in changes)) {
+      await scheduleAutoSyncPush();
+    }
   });
 }
 
@@ -2986,5 +3361,14 @@ if (chrome.storage && chrome.storage.onChanged) {
   await loadTheme();
   await migrateAwayFromFolders();
   applyStaticI18n();
+  try {
+    const syncSession = await getSyncSession();
+    const syncSettings = await getSyncSettings();
+    if (syncSettings.enabled && syncSession.accessToken && syncSession.user && syncSession.user.id) {
+      await pullCloudDataFromSupabase();
+    }
+  } catch (err) {
+    console.warn('[wolfy] initial auto sync pull failed:', err);
+  }
   await renderDashboard();
 })();
