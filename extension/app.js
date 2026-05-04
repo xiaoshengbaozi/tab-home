@@ -50,6 +50,17 @@ const STRINGS = {
     closeDupes: 'Close duplicates',
     plusN: (n) => `+${n} more`,
     statTabs: 'Open tabs',
+    socialLinks: 'Social links',
+    editLinks: 'Edit',
+    socialEmpty: 'Add your links',
+    socialSaved: 'Social links updated',
+    settings: 'Settings',
+    backgroundUrl: 'Background image URL',
+    uploadImage: 'Upload image',
+    clear: 'Clear',
+    brightness: 'Brightness',
+    blur: 'Blur',
+    backgroundSaved: 'Background updated',
     addToFav: 'Add to favorites', removeFromFav: 'Remove from favorites',
     pinTip: 'Pin tab', unpinTip: 'Unpin tab',
     closeThisTab: 'Close this tab',
@@ -87,6 +98,17 @@ const STRINGS = {
     closeDupes: '关闭重复',
     plusN: (n) => `还有 ${n} 个`,
     statTabs: '已打开',
+    socialLinks: '社交链接',
+    editLinks: '编辑',
+    socialEmpty: '添加你的链接',
+    socialSaved: '社交链接已更新',
+    settings: '设置',
+    backgroundUrl: '背景图片链接',
+    uploadImage: '上传图片',
+    clear: '清除',
+    brightness: '亮度',
+    blur: '模糊',
+    backgroundSaved: '背景已更新',
     addToFav: '加入收藏', removeFromFav: '移除收藏',
     pinTip: '固定此标签', unpinTip: '取消固定',
     closeThisTab: '关闭此标签',
@@ -109,6 +131,17 @@ const STRINGS = {
 
 let currentLang = 'en';
 let currentWeatherHtml = '';
+const SOCIAL_PLATFORMS = [
+  { key: 'x', label: 'X', placeholder: 'https://x.com/yourname' },
+  { key: 'instagram', label: 'Instagram', placeholder: 'https://instagram.com/yourname' },
+  { key: 'github', label: 'GitHub', placeholder: 'https://github.com/yourname' },
+];
+const DEFAULT_BACKGROUND_SETTINGS = {
+  imageUrl: '',
+  imageDataUrl: '',
+  brightness: 72,
+  blur: 0,
+};
 let weatherCache = {
   fetchedAt: 0,
   displayByLang: { en: '', zh: '' },
@@ -147,6 +180,80 @@ function updateHeaderDateDisplay() {
   if (!dateEl) return;
   const dateText = getDateDisplay();
   dateEl.innerHTML = currentWeatherHtml ? `${dateText} <span class="date-separator">|</span> ${currentWeatherHtml}` : dateText;
+}
+
+function getSettingsIcon() {
+  return `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9M4.5 6h2.25M8.25 6a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0ZM13.5 18h6M4.5 18h4.5m0 0a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0ZM15.75 12h3.75M4.5 12h7.5m0 0a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0Z" /></svg>`;
+}
+
+function normalizeSocialUrl(raw) {
+  const text = String(raw || '').trim();
+  if (!text) return '';
+  if (/^https?:\/\//i.test(text)) return text;
+  return `https://${text}`;
+}
+
+function socialIcon(name) {
+  if (name === 'x') {
+    return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5.5 18 18.5M18 5.5 6 18.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>`;
+  }
+  if (name === 'instagram') {
+    return `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="4" fill="none" stroke="currentColor" stroke-width="1.8"></rect><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.8"></circle><circle cx="16.4" cy="7.6" r="0.9" fill="currentColor"></circle></svg>`;
+  }
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18.8c-4.5 1.3-4.5-2.4-6.3-2.9m12.6 5.8v-3.4a2.96 2.96 0 0 0-.8-2.3c2.6-.3 5.4-1.3 5.4-5.8a4.5 4.5 0 0 0-1.2-3.1 4.2 4.2 0 0 0-.1-3.1s-1-.3-3.3 1.2a11.4 11.4 0 0 0-6 0C7 3.7 6 4 6 4a4.2 4.2 0 0 0-.1 3.1 4.5 4.5 0 0 0-1.2 3.1c0 4.5 2.8 5.5 5.4 5.8a2.96 2.96 0 0 0-.8 2.3v3.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
+}
+
+async function getSocialLinks() {
+  const { socialLinks = {} } = await chrome.storage.local.get('socialLinks');
+  return socialLinks && typeof socialLinks === 'object' ? socialLinks : {};
+}
+
+async function saveSocialLinks(links) {
+  await chrome.storage.local.set({ socialLinks: links });
+}
+
+async function getBackgroundSettings() {
+  const { backgroundSettings = {} } = await chrome.storage.local.get('backgroundSettings');
+  return {
+    ...DEFAULT_BACKGROUND_SETTINGS,
+    ...(backgroundSettings && typeof backgroundSettings === 'object' ? backgroundSettings : {}),
+  };
+}
+
+async function saveBackgroundSettings(settings) {
+  await chrome.storage.local.set({ backgroundSettings: settings });
+}
+
+function applyBackgroundSettings(settings) {
+  const bg = document.getElementById('pageBackground');
+  if (!bg) return;
+  const source = settings.imageDataUrl || normalizeSocialUrl(settings.imageUrl);
+  const hasImage = !!source;
+  const brightness = Math.max(35, Math.min(100, Number(settings.brightness || 72)));
+  const blur = Math.max(0, Number(settings.blur || 0));
+  bg.style.backgroundImage = hasImage ? `url("${source.replace(/"/g, '%22')}")` : 'none';
+  bg.style.opacity = hasImage ? '1' : '0';
+  bg.style.filter = hasImage ? `blur(${blur}px) brightness(${brightness / 100})` : 'none';
+}
+
+async function renderFooterSocials() {
+  const container = document.getElementById('footerSocials');
+  const editBtn = document.getElementById('footerSocialsEdit');
+  if (!container) return;
+
+  const links = await getSocialLinks();
+  const items = SOCIAL_PLATFORMS.map((platform) => {
+    const url = normalizeSocialUrl(links[platform.key]);
+    const icon = socialIcon(platform.key);
+    const label = escapeHtml(platform.label);
+    if (!url) {
+      return `<button class="footer-social footer-social-empty" type="button" data-action="open-socials-modal"><span class="footer-social-icon">${icon}</span><span class="footer-social-name">${label}</span></button>`;
+    }
+    return `<a class="footer-social" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer"><span class="footer-social-icon">${icon}</span><span class="footer-social-name">${label}</span></a>`;
+  }).join('');
+
+  container.innerHTML = items;
+  if (editBtn) editBtn.textContent = t('editLinks');
 }
 
 function getWeatherLabel(code, isDay, lang = currentLang) {
@@ -368,6 +475,11 @@ function applyStaticI18n() {
 
   // Header toggle button — shows the OTHER language as a hint to click
   set('#langToggle', 'langToggle');
+  const settingsToggle = document.getElementById('settingsToggle');
+  if (settingsToggle) {
+    settingsToggle.setAttribute('title', t('settings'));
+    settingsToggle.innerHTML = getSettingsIcon();
+  }
 
   // Favorites column
   set('.favorites-column .section-header h2', 'favorites');
@@ -391,6 +503,16 @@ function applyStaticI18n() {
 
   // Footer stat
   set('.stat-label', 'statTabs');
+  set('#footerSocialsEdit', 'editLinks');
+  const socialsFormSubmit = document.getElementById('socialsFormSubmit');
+  if (socialsFormSubmit) socialsFormSubmit.textContent = t('save');
+  set('#backgroundUrlLabel', 'backgroundUrl');
+  set('#backgroundUploadLabel', 'uploadImage');
+  set('#backgroundClearBtn', 'clear');
+  set('#backgroundBrightnessLabel', 'brightness');
+  set('#backgroundBlurLabel', 'blur');
+  const settingsFormSubmit = document.getElementById('settingsFormSubmit');
+  if (settingsFormSubmit) settingsFormSubmit.textContent = t('save');
 
   // tab-out duplicate banner — only the suffix and button label
   // (the count number lives in #tabOutDupeCount and is set by JS)
@@ -1593,6 +1715,8 @@ function renderFavoriteItem(fav) {
  * 6. Renders the "Saved for Later" checklist
  */
 async function renderStaticDashboard() {
+  applyBackgroundSettings(await getBackgroundSettings());
+
   // --- Header ---
   updateHeaderDateDisplay();
   void ensureWeatherLoaded();
@@ -1772,6 +1896,7 @@ async function renderStaticDashboard() {
   // --- Footer stats ---
   const statTabs = document.getElementById('statTabs');
   if (statTabs) statTabs.textContent = openTabs.length;
+  await renderFooterSocials();
 
   // --- Check for duplicate tab-out tabs ---
   checkTabOutDupes();
@@ -1799,6 +1924,64 @@ document.addEventListener('click', async (e) => {
   if (!actionEl) return;
 
   const action = actionEl.dataset.action;
+
+  if (action === 'open-settings-modal') {
+    const modal = document.getElementById('settingsModal');
+    if (!modal) return;
+    const settings = await getBackgroundSettings();
+    const urlInput = document.getElementById('backgroundUrlInput');
+    const brightnessInput = document.getElementById('backgroundBrightnessInput');
+    const blurInput = document.getElementById('backgroundBlurInput');
+    const uploadInput = document.getElementById('backgroundUploadInput');
+    if (urlInput) urlInput.value = settings.imageUrl || '';
+    if (brightnessInput) brightnessInput.value = String(settings.brightness ?? DEFAULT_BACKGROUND_SETTINGS.brightness);
+    if (blurInput) blurInput.value = String(settings.blur ?? DEFAULT_BACKGROUND_SETTINGS.blur);
+    if (uploadInput) {
+      uploadInput.value = '';
+      delete uploadInput.dataset.pendingImage;
+    }
+    modal.style.display = 'flex';
+    if (urlInput) setTimeout(() => urlInput.focus(), 0);
+    return;
+  }
+
+  if (action === 'cancel-settings-form') {
+    const modal = document.getElementById('settingsModal');
+    if (modal) modal.style.display = 'none';
+    return;
+  }
+
+  if (action === 'clear-background-image') {
+    const urlInput = document.getElementById('backgroundUrlInput');
+    const uploadInput = document.getElementById('backgroundUploadInput');
+    if (urlInput) urlInput.value = '';
+    if (uploadInput) {
+      uploadInput.value = '';
+      delete uploadInput.dataset.pendingImage;
+    }
+    return;
+  }
+
+  if (action === 'open-socials-modal') {
+    const modal = document.getElementById('socialsModal');
+    if (!modal) return;
+    const links = await getSocialLinks();
+    const xInput = document.getElementById('socialXInput');
+    const instagramInput = document.getElementById('socialInstagramInput');
+    const githubInput = document.getElementById('socialGithubInput');
+    if (xInput) xInput.value = links.x || '';
+    if (instagramInput) instagramInput.value = links.instagram || '';
+    if (githubInput) githubInput.value = links.github || '';
+    modal.style.display = 'flex';
+    if (xInput) setTimeout(() => xInput.focus(), 0);
+    return;
+  }
+
+  if (action === 'cancel-socials-form') {
+    const modal = document.getElementById('socialsModal');
+    if (modal) modal.style.display = 'none';
+    return;
+  }
 
   // ---- Close duplicate tab-out tabs ----
   if (action === 'close-tabout-dupes') {
@@ -1870,6 +2053,18 @@ document.addEventListener('click', async (e) => {
   // ---- Click on modal backdrop closes it ----
   if (e.target.id === 'favoritesModal') {
     closeFavoriteModal();
+    return;
+  }
+
+  if (e.target.id === 'socialsModal') {
+    const modal = document.getElementById('socialsModal');
+    if (modal) modal.style.display = 'none';
+    return;
+  }
+
+  if (e.target.id === 'settingsModal') {
+    const modal = document.getElementById('settingsModal');
+    if (modal) modal.style.display = 'none';
     return;
   }
 
@@ -2303,6 +2498,10 @@ document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   const modal = document.getElementById('favoritesModal');
   if (modal && modal.style.display !== 'none') { closeFavoriteModal(); return; }
+  const socialsModal = document.getElementById('socialsModal');
+  if (socialsModal && socialsModal.style.display !== 'none') { socialsModal.style.display = 'none'; return; }
+  const settingsModal = document.getElementById('settingsModal');
+  if (settingsModal && settingsModal.style.display !== 'none') { settingsModal.style.display = 'none'; return; }
   closeFavoriteMenu();
 });
 
@@ -2363,6 +2562,19 @@ async function stageCustomLogoFromBlob(blob) {
 
 // ---- Logo file picker — read as base64 data URL, show in preview ----
 document.addEventListener('change', (e) => {
+  if (e.target.id === 'backgroundUploadInput') {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    compressImage(file, 1920).then((dataUrl) => {
+      e.target.dataset.pendingImage = dataUrl;
+      const urlInput = document.getElementById('backgroundUrlInput');
+      if (urlInput) urlInput.value = '';
+    }).catch((err) => {
+      console.warn('[wolfy] background image compress failed:', err);
+    });
+    return;
+  }
+
   if (e.target.id !== 'favoritesLogoInput') return;
   const file = e.target.files && e.target.files[0];
   if (file) stageCustomLogoFromBlob(file);
@@ -2402,6 +2614,40 @@ document.addEventListener('input', (e) => {
 
 // ---- Favorites form submission (handles both add and edit) ----
 document.addEventListener('submit', async (e) => {
+  if (e.target.id === 'settingsForm') {
+    e.preventDefault();
+    const uploadInput = document.getElementById('backgroundUploadInput');
+    const settings = {
+      imageUrl: document.getElementById('backgroundUrlInput')?.value.trim() || '',
+      imageDataUrl: (uploadInput && uploadInput.dataset.pendingImage) ? uploadInput.dataset.pendingImage : '',
+      brightness: Number(document.getElementById('backgroundBrightnessInput')?.value || DEFAULT_BACKGROUND_SETTINGS.brightness),
+      blur: Number(document.getElementById('backgroundBlurInput')?.value || DEFAULT_BACKGROUND_SETTINGS.blur),
+    };
+    if (settings.imageUrl) settings.imageDataUrl = '';
+    await saveBackgroundSettings(settings);
+    applyBackgroundSettings(settings);
+    if (uploadInput) delete uploadInput.dataset.pendingImage;
+    const modal = document.getElementById('settingsModal');
+    if (modal) modal.style.display = 'none';
+    showToast(t('backgroundSaved'));
+    return;
+  }
+
+  if (e.target.id === 'socialsForm') {
+    e.preventDefault();
+    const links = {
+      x: document.getElementById('socialXInput')?.value.trim() || '',
+      instagram: document.getElementById('socialInstagramInput')?.value.trim() || '',
+      github: document.getElementById('socialGithubInput')?.value.trim() || '',
+    };
+    await saveSocialLinks(links);
+    const modal = document.getElementById('socialsModal');
+    if (modal) modal.style.display = 'none';
+    await renderFooterSocials();
+    showToast(t('socialSaved'));
+    return;
+  }
+
   if (e.target.id !== 'favoritesForm') return;
   e.preventDefault();
 

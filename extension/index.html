@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div class="page-background" id="pageBackground" aria-hidden="true"></div>
 <div class="container">
 
 
@@ -40,10 +41,11 @@
         </div>
         <button class="tab-cleanup-btn" data-action="close-tabout-dupes">Keep one</button>
       </div>
-      <!-- Theme toggle (sun/moon) — flips between light and dark -->
-      <button class="theme-toggle" id="themeToggle" data-action="toggle-theme" title="Toggle theme"></button>
       <!-- Language toggle — shows the OTHER language; click to switch -->
       <button class="lang-toggle" id="langToggle" data-action="toggle-lang"></button>
+      <!-- Theme toggle (sun/moon) — flips between light and dark -->
+      <button class="theme-toggle" id="themeToggle" data-action="toggle-theme" title="Toggle theme"></button>
+      <button class="theme-toggle" id="settingsToggle" data-action="open-settings-modal" title="Open settings"></button>
     </div>
   </header>
 
@@ -114,8 +116,9 @@
         <div class="stat-label">Open tabs</div>
       </div>
     </div>
-    <div class="last-refresh">
-      <span style="color: var(--muted); font-size: 11px;">tab-home by <a href="https://x.com/wolfyxbt" target="_top" style="color: var(--muted); text-decoration: underline; text-underline-offset: 2px;">WolfyXBT</a> · forked from <a href="https://github.com/zarazhangrui/tab-out" target="_top" style="color: var(--muted); text-decoration: underline; text-underline-offset: 2px;">tab-out</a> by <a href="https://x.com/zarazhangrui" target="_top" style="color: var(--muted); text-decoration: underline; text-underline-offset: 2px;">Zara</a></span>
+    <div class="footer-socials-wrap">
+      <div class="footer-socials" id="footerSocials"></div>
+      <button class="footer-socials-edit" id="footerSocialsEdit" data-action="open-socials-modal" type="button">Edit</button>
     </div>
   </footer>
 
@@ -164,6 +167,48 @@
       <button type="button" class="confirm-ok" id="confirmOkBtn">Confirm</button>
     </div>
   </div>
+</div>
+
+<div class="favorites-modal" id="socialsModal" style="display:none">
+  <form class="favorites-form favorites-form-modal" id="socialsForm">
+    <label class="favorites-form-label" for="socialXInput" id="socialXLabel">X</label>
+    <input type="text" class="favorites-form-input" id="socialXInput" placeholder="https://x.com/yourname" autocomplete="off" spellcheck="false">
+
+    <label class="favorites-form-label" for="socialInstagramInput" id="socialInstagramLabel">Instagram</label>
+    <input type="text" class="favorites-form-input" id="socialInstagramInput" placeholder="https://instagram.com/yourname" autocomplete="off" spellcheck="false">
+
+    <label class="favorites-form-label" for="socialGithubInput" id="socialGithubLabel">GitHub</label>
+    <input type="text" class="favorites-form-input" id="socialGithubInput" placeholder="https://github.com/yourname" autocomplete="off" spellcheck="false">
+
+    <div class="favorites-form-actions">
+      <button type="button" class="favorites-form-cancel" data-action="cancel-socials-form">Cancel</button>
+      <button type="submit" class="favorites-form-submit" id="socialsFormSubmit">Save</button>
+    </div>
+  </form>
+</div>
+
+<div class="favorites-modal" id="settingsModal" style="display:none">
+  <form class="favorites-form favorites-form-modal" id="settingsForm">
+    <label class="favorites-form-label" for="backgroundUrlInput" id="backgroundUrlLabel">Background image URL</label>
+    <input type="text" class="favorites-form-input" id="backgroundUrlInput" placeholder="https://images.example.com/wallpaper.jpg" autocomplete="off" spellcheck="false">
+
+    <div class="favorites-form-logo">
+      <label for="backgroundUploadInput" class="favorites-logo-upload" id="backgroundUploadLabel">Upload image</label>
+      <input type="file" id="backgroundUploadInput" accept="image/*" hidden>
+      <button type="button" class="favorites-logo-reset" data-action="clear-background-image" id="backgroundClearBtn">Clear</button>
+    </div>
+
+    <label class="favorites-form-label" for="backgroundBrightnessInput" id="backgroundBrightnessLabel">Brightness</label>
+    <input type="range" class="settings-range-input" id="backgroundBrightnessInput" min="35" max="100" step="1" value="72">
+
+    <label class="favorites-form-label" for="backgroundBlurInput" id="backgroundBlurLabel">Blur</label>
+    <input type="range" class="settings-range-input" id="backgroundBlurInput" min="0" max="24" step="1" value="0">
+
+    <div class="favorites-form-actions">
+      <button type="button" class="favorites-form-cancel" data-action="cancel-settings-form">Cancel</button>
+      <button type="submit" class="favorites-form-submit" id="settingsFormSubmit">Save</button>
+    </div>
+  </form>
 </div>
 
 <!-- ================================================================
