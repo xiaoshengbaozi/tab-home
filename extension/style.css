@@ -7,7 +7,7 @@
   --ink: #f5f8ff;
   --paper: #060a14;
   --warm-gray: rgba(160, 180, 255, 0.16);
-  --muted: #8f9dc0;
+  --muted: #d0d7e9;
   --accent-amber: #7c9cff;
   --accent-sage: #4ee0b1;
   --accent-slate: #77d2ff;
@@ -163,7 +163,10 @@ footer,
 .favorites-form-modal,
 .confirm-card,
 .favorite-popup-menu {
-  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(6px) saturate(160%) brightness(1.2);
+  backdrop-filter: blur(6px) saturate(160%) brightness(1.2);
+  background: rgb(0 0 0 / 0.15) !important;
+  box-shadow: inset 1px 1px 1px 0px rgba(255, 255, 255, 0.2), inset -1px -1px 1px 0px rgb(255, 255, 255, 0.2) !important;
 }
 
 header {
@@ -171,20 +174,20 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 14px;
   margin-bottom: 18px;
   padding: 18px 22px;
   border: 1px solid var(--warm-gray);
   border-radius: 26px;
   background: var(--header-bg);
-  box-shadow: 0 18px 45px -30px var(--shadow);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 18px 45px -30px var(--shadow);
 }
 
 .header-left {
   display: flex;
   align-items: center;
   gap: 14px;
-  min-height: 20px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .header-left .date {
@@ -245,6 +248,8 @@ header {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
+  margin-left: 16px;
 }
 
 .lang-toggle,
@@ -329,7 +334,7 @@ header {
   background: rgba(124, 156, 255, 0.12);
   border: 1px solid rgba(124, 156, 255, 0.2);
   border-radius: 999px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .tab-cleanup-left {
@@ -389,7 +394,7 @@ header {
   border-radius: 28px;
   border: 1px solid var(--warm-gray);
   background: var(--section-bg);
-  box-shadow: 0 24px 60px -38px var(--shadow);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 24px 60px -38px var(--shadow);
 }
 
 .dashboard-columns .active-section {
@@ -902,7 +907,7 @@ header {
   border: 1px solid var(--warm-gray);
   border-radius: 22px;
   background: var(--card-bg-strong);
-  box-shadow: 0 22px 55px -40px var(--shadow);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 22px 55px -40px var(--shadow);
 }
 
 .favorites-modal,
@@ -915,7 +920,8 @@ header {
   justify-content: center;
   padding: 24px;
   background: var(--overlay-bg);
-  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(16px) saturate(160%) brightness(1.2);
+  backdrop-filter: blur(16px) saturate(160%) brightness(1.2);
 }
 
 .confirm-modal {
@@ -929,7 +935,7 @@ header {
   border: 1px solid var(--warm-gray);
   border-radius: 24px;
   background: var(--card-bg-strong);
-  box-shadow: 0 30px 70px -34px rgba(0, 0, 0, 0.7);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 30px 70px -34px rgba(0, 0, 0, 0.7);
 }
 
 .confirm-card {
@@ -1076,7 +1082,7 @@ header {
   background:
     radial-gradient(circle at top right, rgba(124, 156, 255, 0.12), transparent 34%),
     linear-gradient(180deg, rgba(124, 156, 255, 0.08), rgba(255, 255, 255, 0.02));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .settings-auth-status-row {
@@ -1424,7 +1430,7 @@ body.dragging-favorite .favorite-slot-empty.drop-target {
   background: var(--card-bg-strong);
   border: 1px solid var(--warm-gray);
   border-radius: 18px;
-  box-shadow: 0 20px 50px -32px rgba(0, 0, 0, 0.75);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09), 0 20px 50px -32px rgba(0, 0, 0, 0.75);
 }
 
 .favorite-popup-item {
@@ -1466,7 +1472,9 @@ body.dragging-favorite .favorite-slot-empty.drop-target {
   background: var(--toast-bg);
   border: 1px solid rgba(124, 156, 255, 0.18);
   border-radius: 999px;
-  box-shadow: 0 22px 50px -28px rgba(0, 0, 0, 0.7);
+  -webkit-backdrop-filter: blur(16px) saturate(160%) brightness(1.2);
+  backdrop-filter: blur(16px) saturate(160%) brightness(1.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 22px 50px -28px rgba(0, 0, 0, 0.7);
   opacity: 0;
   pointer-events: none;
   transform: translateX(-50%) translateY(80px);
@@ -1495,7 +1503,7 @@ footer {
   border: 1px solid var(--warm-gray);
   border-radius: 24px;
   background: var(--footer-bg);
-  box-shadow: 0 18px 45px -34px var(--shadow);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 18px 45px -34px var(--shadow);
 }
 
 .footer-stats {

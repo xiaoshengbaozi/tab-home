@@ -407,26 +407,69 @@ async function fetchSupabaseUser(syncSettings, accessToken) {
   });
 }
 
+async function refreshAccessToken(syncSettings, refreshToken) {
+  const data = await supabaseAuthRequest('/token?grant_type=refresh_token', {
+    method: 'POST',
+    syncSettings,
+    body: { refresh_token: refreshToken },
+  });
+  return {
+    accessToken: data.access_token,
+    refreshToken: data.refresh_token || refreshToken,
+    user: data.user || null,
+  };
+}
+
 function getSupabaseRestBase(syncSettings) {
   return `${String(syncSettings.projectUrl || '').replace(/\/+$/, '')}/rest/v1`;
 }
 
 async function supabaseRestRequest(path, { method = 'GET', syncSettings, accessToken, body, prefer } = {}) {
-  const headers = {
-    apikey: syncSettings.anonKey,
-    Authorization: `Bearer ${accessToken}`,
+  const doFetch = async (token) => {
+    const headers = {
+      apikey: syncSettings.anonKey,
+      Authorization: `Bearer ${token}`,
+    };
+    if (body) headers['Content-Type'] = 'application/json';
+    if (prefer) headers.Prefer = prefer;
+
+    const resp = await fetch(`${getSupabaseRestBase(syncSettings)}${path}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    const text = await resp.text();
+    const data = text ? JSON.parse(text) : null;
+    return { resp, data };
   };
-  if (body) headers['Content-Type'] = 'application/json';
-  if (prefer) headers.Prefer = prefer;
 
-  const resp = await fetch(`${getSupabaseRestBase(syncSettings)}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let { resp, data } = await doFetch(accessToken);
 
-  const text = await resp.text();
-  const data = text ? JSON.parse(text) : null;
+  // Auto-refresh expired token — transparent to all callers
+  if (resp.status === 401) {
+    const session = await getSyncSession();
+    if (session.refreshToken) {
+      try {
+        const refreshed = await refreshAccessToken(syncSettings, session.refreshToken);
+        await saveSyncSession({
+          ...session,
+          accessToken: refreshed.accessToken,
+          refreshToken: refreshed.refreshToken,
+          user: refreshed.user || session.user,
+        });
+        // Retry once with the fresh token
+        const retry = await doFetch(refreshed.accessToken);
+        resp = retry.resp;
+        data = retry.data;
+      } catch (refreshErr) {
+        console.warn('[wolfy] token refresh failed:', refreshErr);
+        await clearSyncSession();
+        throw new Error('Session expired. Please sign in again.');
+      }
+    }
+  }
+
   if (!resp.ok) {
     const message = data && (data.message || data.error || data.msg);
     throw new Error(message || `rest ${resp.status}`);
