@@ -93,8 +93,8 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(143, 157, 192, 0.42) transparent;
+  /*scrollbar-width: thin;
+  scrollbar-color: rgba(143, 157, 192, 0.42) transparent;*/
 }
 
 *::-webkit-scrollbar {
