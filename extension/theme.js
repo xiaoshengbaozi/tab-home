@@ -60,6 +60,16 @@ function applyStaticI18n() {
     settingsToggle.setAttribute('title', t('settings'));
     settingsToggle.innerHTML = getSettingsIcon();
   }
+  const snapshotsToggle = document.getElementById('snapshotsToggle');
+  if (snapshotsToggle) {
+    snapshotsToggle.setAttribute('title', t('workspaceSnapshots'));
+    snapshotsToggle.innerHTML = getSnapshotsIcon();
+  }
+  const commandPaletteToggle = document.getElementById('commandPaletteToggle');
+  if (commandPaletteToggle) {
+    commandPaletteToggle.setAttribute('title', t('searchCommands'));
+    commandPaletteToggle.innerHTML = getCommandIcon();
+  }
 
   // Favorites column
   set('.favorites-column .section-header h2', 'favorites');
@@ -84,6 +94,15 @@ function applyStaticI18n() {
   // Footer stat
   set('.stat-label', 'statTabs');
   set('#footerSocialsEdit', 'editLinks', 'title');
+  set('#snapshotsTitle', 'workspaceSnapshots');
+  set('#snapshotsSubtitle', 'snapshotsSubtitle');
+  set('#snapshotNameLabel', 'snapshotName');
+  set('#snapshotNameInput', 'snapshotPlaceholder', 'placeholder');
+  set('#snapshotsCreateBtn', 'saveCurrentSnapshot');
+  set('#snapshotsCloseBtn', 'cancel');
+  set('#snapshotsEmpty', 'noSnapshots');
+  set('#commandPaletteInput', 'commandPlaceholder', 'placeholder');
+  set('#commandPaletteEmpty', 'commandNoMatches');
   const socialsFormSubmit = document.getElementById('socialsFormSubmit');
   if (socialsFormSubmit) socialsFormSubmit.textContent = t('save');
   set('#syncStatusTitle', 'syncStatus');

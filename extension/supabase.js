@@ -18,6 +18,7 @@ const DEFAULT_SYNC_SESSION = {
   refreshToken: '',
   user: null,
 };
+const SYNCED_FAVORITE_URLS_KEY = 'syncedFavoriteUrls';
 let syncPushTimer = null;
 let suppressAutoSync = false;
 
@@ -210,6 +211,105 @@ function toIsoNow() {
   return new Date().toISOString();
 }
 
+function timeValue(value) {
+  if (!value) return 0;
+  const date = new Date(value);
+  const time = date.getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
+function latestFavoriteTimestamp(fav) {
+  return fav.updatedAt || fav.updated_at || fav.addedAt || fav.created_at || '';
+}
+
+function normalizeLocalFavorite(fav, index = 0) {
+  const now = toIsoNow();
+  return {
+    id: fav.id || `${Date.now()}-${index}`,
+    url: fav.url,
+    title: fav.title || fav.url,
+    addedAt: fav.addedAt || fav.created_at || now,
+    updatedAt: fav.updatedAt || fav.updated_at || fav.addedAt || fav.created_at || now,
+    slot: typeof fav.slot === 'number' ? fav.slot : index,
+    customLogo: fav.customLogo || fav.custom_logo_url || undefined,
+    iconUrl: fav.iconUrl || undefined,
+  };
+}
+
+function normalizeCloudFavorite(fav, index = 0) {
+  return normalizeLocalFavorite({
+    id: `${fav.id || Date.now()}-${index}`,
+    url: fav.url,
+    title: fav.title,
+    addedAt: fav.created_at,
+    updatedAt: fav.updated_at || fav.created_at,
+    slot: fav.slot,
+    customLogo: fav.custom_logo_url || undefined,
+  }, index);
+}
+
+function favoriteIsNewer(a, b) {
+  return timeValue(latestFavoriteTimestamp(a)) > timeValue(latestFavoriteTimestamp(b));
+}
+
+function compactFavoriteSlots(favorites) {
+  const sorted = favorites
+    .filter(fav => fav && fav.url)
+    .sort((a, b) => {
+      const slotDiff = (a.slot ?? 0) - (b.slot ?? 0);
+      if (slotDiff !== 0) return slotDiff;
+      return timeValue(a.addedAt) - timeValue(b.addedAt);
+    });
+
+  return sorted.map((fav, index) => ({
+    ...fav,
+    slot: index,
+  }));
+}
+
+function mergeFavorites(localFavorites, cloudFavorites) {
+  const byUrl = new Map();
+  for (const [index, fav] of localFavorites.entries()) {
+    if (!fav || !fav.url) continue;
+    byUrl.set(fav.url, normalizeLocalFavorite(fav, index));
+  }
+
+  for (const [index, rawCloudFav] of cloudFavorites.entries()) {
+    if (!rawCloudFav || !rawCloudFav.url) continue;
+    const cloudFav = normalizeCloudFavorite(rawCloudFav, index);
+    const localFav = byUrl.get(cloudFav.url);
+    if (!localFav) {
+      byUrl.set(cloudFav.url, cloudFav);
+      continue;
+    }
+
+    const winner = favoriteIsNewer(cloudFav, localFav) ? cloudFav : localFav;
+    byUrl.set(cloudFav.url, {
+      ...winner,
+      iconUrl: localFav.iconUrl,
+      customLogo: winner.customLogo || localFav.customLogo || undefined,
+      addedAt: timeValue(localFav.addedAt) <= timeValue(cloudFav.addedAt)
+        ? localFav.addedAt
+        : cloudFav.addedAt,
+    });
+  }
+
+  return compactFavoriteSlots(Array.from(byUrl.values()));
+}
+
+async function getSyncedFavoriteUrls() {
+  const stored = await chrome.storage.local.get(SYNCED_FAVORITE_URLS_KEY);
+  const urls = stored[SYNCED_FAVORITE_URLS_KEY];
+  return Array.isArray(urls) ? new Set(urls.filter(Boolean)) : new Set();
+}
+
+async function saveSyncedFavoriteUrls(favorites) {
+  const urls = favorites
+    .map((fav) => fav && fav.url)
+    .filter(Boolean);
+  await chrome.storage.local.set({ [SYNCED_FAVORITE_URLS_KEY]: Array.from(new Set(urls)) });
+}
+
 function formatSyncTime(value) {
   if (!value) return t('syncNever');
   const date = new Date(value);
@@ -271,29 +371,52 @@ async function pushLocalDataToSupabase() {
     }],
   });
 
-  await supabaseRestRequest(`/favorites?user_id=eq.${encodeURIComponent(userId)}`, {
-    method: 'DELETE',
-    syncSettings,
-    accessToken: syncSession.accessToken,
-  });
-
   if (favorites.length > 0) {
-    await supabaseRestRequest('/favorites', {
+    const normalizedFavorites = compactFavoriteSlots(
+      favorites.map((fav, index) => normalizeLocalFavorite(fav, index))
+    );
+    await chrome.storage.local.set({ favorites: normalizedFavorites });
+
+    await supabaseRestRequest('/favorites?on_conflict=user_id,url', {
       method: 'POST',
       syncSettings,
       accessToken: syncSession.accessToken,
-      prefer: 'return=minimal',
-      body: favorites.map((fav) => ({
+      prefer: 'resolution=merge-duplicates,return=minimal',
+      body: normalizedFavorites.map((fav) => ({
         user_id: userId,
         url: fav.url,
         title: fav.title,
         slot: fav.slot ?? 0,
         custom_logo_url: fav.customLogo || '',
         created_at: fav.addedAt || now,
-        updated_at: now,
+        updated_at: fav.updatedAt || now,
       })),
     });
   }
+
+  const cloudFavorites = await supabaseRestRequest(`/favorites?user_id=eq.${encodeURIComponent(userId)}&select=url`, {
+    method: 'GET',
+    syncSettings,
+    accessToken: syncSession.accessToken,
+  });
+  const localUrls = new Set(favorites.map((fav) => fav.url).filter(Boolean));
+  const previouslySyncedUrls = await getSyncedFavoriteUrls();
+  const deletedUrls = (Array.isArray(cloudFavorites) ? cloudFavorites : [])
+    .map((fav) => fav && fav.url)
+    .filter((url) => url && !localUrls.has(url) && previouslySyncedUrls.has(url));
+
+  for (const url of deletedUrls) {
+    await supabaseRestRequest(
+      `/favorites?user_id=eq.${encodeURIComponent(userId)}&url=eq.${encodeURIComponent(url)}`,
+      {
+        method: 'DELETE',
+        syncSettings,
+        accessToken: syncSession.accessToken,
+      }
+    );
+  }
+
+  await saveSyncedFavoriteUrls(favorites);
 }
 
 async function pullCloudDataFromSupabase() {
@@ -322,7 +445,9 @@ async function pullCloudDataFromSupabase() {
 
   const settingsRow = Array.isArray(settingsRows) ? settingsRows[0] : null;
   const socialRow = Array.isArray(socialRows) ? socialRows[0] : null;
-  const favorites = Array.isArray(favoritesRows) ? favoritesRows : [];
+  const cloudFavorites = Array.isArray(favoritesRows) ? favoritesRows : [];
+  const localFavorites = await getFavorites();
+  const mergedFavorites = mergeFavorites(localFavorites, cloudFavorites);
 
   suppressAutoSync = true;
   try {
@@ -346,15 +471,9 @@ async function pullCloudDataFromSupabase() {
     }
 
     await chrome.storage.local.set({
-      favorites: favorites.map((fav, index) => ({
-        id: `${fav.id || Date.now()}-${index}`,
-        url: fav.url,
-        title: fav.title,
-        addedAt: fav.created_at || toIsoNow(),
-        slot: typeof fav.slot === 'number' ? fav.slot : index,
-        customLogo: fav.custom_logo_url || undefined,
-      })),
+      favorites: mergedFavorites,
     });
+    await saveSyncedFavoriteUrls(mergedFavorites);
 
     await loadLang();
     await loadTheme();
@@ -364,6 +483,8 @@ async function pullCloudDataFromSupabase() {
   } finally {
     setTimeout(() => { suppressAutoSync = false; }, 300);
   }
+
+  await pushLocalDataToSupabase();
 }
 
 async function renderSyncStatus() {

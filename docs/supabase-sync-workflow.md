@@ -99,8 +99,14 @@ Use simple rules first:
 
 - local writes update local cache immediately
 - background upload writes to Storage first, then stores returned file path in `user_settings`
-- cloud conflict strategy:
-  - latest `updated_at` wins
+- favorites are merged by URL:
+  - if a URL exists only locally, upload it
+  - if a URL exists only in the cloud, keep it locally
+  - if both sides have the same URL, keep the newer `updated_at`
+  - compact slots after merge so duplicate positions do not collide
+- deletes are conservative:
+  - only delete cloud favorites that this device has previously synced and then removed locally
+  - never delete cloud-only favorites that an older device has not seen before
 
 This is enough for a strong first version.
 

@@ -11,6 +11,10 @@
    creating a grid with billions of empty cells. */
 const SLOT_UPPER_BOUND = 10000;
 
+function favoriteTimestamp() {
+  return new Date().toISOString();
+}
+
 /* Favorite shape: { id, url, title, addedAt, slot, customLogo? }
 
    `slot` is an explicit grid index. New favorites are placed at the
@@ -49,6 +53,7 @@ async function addFavorite(url, title, customLogo = null) {
     url,
     title:   finalTitle,
     addedAt: new Date().toISOString(),
+    updatedAt: favoriteTimestamp(),
     slot,
   };
   if (customLogo) fav.customLogo = customLogo;
@@ -72,6 +77,8 @@ async function setFavoriteSlot(id, newSlot) {
   const occupant = favorites.find(f => f.slot === newSlot);
   if (occupant) occupant.slot = dragged.slot;
   dragged.slot = newSlot;
+  dragged.updatedAt = favoriteTimestamp();
+  if (occupant) occupant.updatedAt = favoriteTimestamp();
   await chrome.storage.local.set({ favorites });
 }
 
@@ -129,6 +136,7 @@ async function updateFavorite(id, fields) {
     if (k === 'customLogo' && v === null) delete fav.customLogo;
     else fav[k] = v;
   }
+  fav.updatedAt = favoriteTimestamp();
   await chrome.storage.local.set({ favorites });
 }
 

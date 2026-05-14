@@ -36,6 +36,34 @@ const STRINGS = {
     socialEmpty: 'Add your links',
     socialSaved: 'Social links updated',
     settings: 'Settings',
+    searchCommands: 'Search and commands',
+    commandPlaceholder: 'Search tabs, favorites, snapshots...',
+    commandNoMatches: 'No matches.',
+    commandTypeAction: 'Action',
+    commandTypeTab: 'Tab',
+    commandTypeFavorite: 'Favorite',
+    commandTypeSnapshot: 'Snapshot',
+    commandSaveSnapshotHint: 'Capture the tabs open right now',
+    commandOpenSnapshotsHint: 'Browse and restore saved workspaces',
+    commandOpenSettingsHint: 'Sync, account, and background',
+    commandCloseDupesHint: 'Keep one copy of each repeated URL',
+    noDuplicates: 'No duplicate tabs',
+    snapshots: 'Snapshots',
+    workspaceSnapshots: 'Workspace snapshots',
+    snapshotsSubtitle: 'Save this tab set and restore it later.',
+    snapshotName: 'Snapshot name',
+    snapshotPlaceholder: 'Focus sprint',
+    saveCurrentSnapshot: 'Save current',
+    noSnapshots: 'No snapshots yet.',
+    snapshotSaved: (n) => `Saved ${n} tab${n !== 1 ? 's' : ''}`,
+    snapshotEmpty: 'No restorable tabs to save',
+    snapshotMeta: (n, date) => `${n} tab${n !== 1 ? 's' : ''} · ${date}`,
+    restore: 'Restore',
+    restoreSnapshot: 'Restore snapshot',
+    restoredSnapshot: (n) => `Opened ${n} tab${n !== 1 ? 's' : ''}`,
+    deleteSnapshot: 'Delete snapshot',
+    snapshotDeleted: 'Snapshot deleted',
+    confirmDeleteSnapshot: 'Delete this workspace snapshot?',
     backgroundUrl: 'Background image URL',
     uploadImage: 'Upload image',
     clear: 'Clear',
@@ -110,6 +138,34 @@ const STRINGS = {
     socialEmpty: '添加你的链接',
     socialSaved: '社交链接已更新',
     settings: '设置',
+    searchCommands: '搜索和命令',
+    commandPlaceholder: '搜索标签、收藏、快照...',
+    commandNoMatches: '没有匹配结果。',
+    commandTypeAction: '操作',
+    commandTypeTab: '标签',
+    commandTypeFavorite: '收藏',
+    commandTypeSnapshot: '快照',
+    commandSaveSnapshotHint: '保存当前打开的这组标签',
+    commandOpenSnapshotsHint: '查看并恢复保存过的工作区',
+    commandOpenSettingsHint: '同步、账号和背景',
+    commandCloseDupesHint: '每个重复网址只保留一个',
+    noDuplicates: '没有重复标签',
+    snapshots: '快照',
+    workspaceSnapshots: '工作区快照',
+    snapshotsSubtitle: '保存当前这组标签，之后一键恢复。',
+    snapshotName: '快照名称',
+    snapshotPlaceholder: '专注冲刺',
+    saveCurrentSnapshot: '保存当前',
+    noSnapshots: '还没有快照。',
+    snapshotSaved: (n) => `已保存 ${n} 个标签`,
+    snapshotEmpty: '没有可保存的网页标签',
+    snapshotMeta: (n, date) => `${n} 个标签 · ${date}`,
+    restore: '恢复',
+    restoreSnapshot: '恢复快照',
+    restoredSnapshot: (n) => `已打开 ${n} 个标签`,
+    deleteSnapshot: '删除快照',
+    snapshotDeleted: '快照已删除',
+    confirmDeleteSnapshot: '确定要删除这个工作区快照吗？',
     backgroundUrl: '背景图片链接',
     uploadImage: '上传图片',
     clear: '清除',
@@ -212,6 +268,14 @@ function updateHeaderDateDisplay() {
 
 function getSettingsIcon() {
   return `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9M4.5 6h2.25M8.25 6a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0ZM13.5 18h6M4.5 18h4.5m0 0a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0ZM15.75 12h3.75M4.5 12h7.5m0 0a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0Z" /></svg>`;
+}
+
+function getSnapshotsIcon() {
+  return `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 7.5h16.5M6 3.75h12A2.25 2.25 0 0 1 20.25 6v12A2.25 2.25 0 0 1 18 20.25H6A2.25 2.25 0 0 1 3.75 18V6A2.25 2.25 0 0 1 6 3.75Zm2.25 7.5h3v3h-3v-3Zm4.5 0h3v3h-3v-3Zm-4.5 4.5h3v1.5h-3v-1.5Zm4.5 0h3v1.5h-3v-1.5Z" /></svg>`;
+}
+
+function getCommandIcon() {
+  return commandIconSvg();
 }
 
 function normalizeSocialUrl(raw) {

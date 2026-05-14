@@ -15,7 +15,29 @@
 
 document.addEventListener('click', async (e) => {
   const actionEl = e.target.closest('[data-action]');
-  if (!actionEl) return;
+  if (!actionEl) {
+    if (e.target.id === 'favoritesModal') { closeFavoriteModal(); return; }
+    if (e.target.id === 'socialsModal') {
+      const modal = document.getElementById('socialsModal');
+      if (modal) modal.style.display = 'none';
+      return;
+    }
+    if (e.target.id === 'settingsModal') {
+      const modal = document.getElementById('settingsModal');
+      if (modal) modal.style.display = 'none';
+      return;
+    }
+    if (e.target.id === 'snapshotsModal') {
+      const modal = document.getElementById('snapshotsModal');
+      if (modal) modal.style.display = 'none';
+      return;
+    }
+    if (e.target.id === 'commandPaletteModal') {
+      closeCommandPalette();
+      return;
+    }
+    return;
+  }
 
   const action = actionEl.dataset.action;
 
@@ -62,6 +84,57 @@ document.addEventListener('click', async (e) => {
       uploadInput.value = '';
       delete uploadInput.dataset.pendingImage;
     }
+    return;
+  }
+
+  if (action === 'open-command-palette') {
+    await openCommandPalette();
+    return;
+  }
+
+  if (action === 'open-snapshots-modal') {
+    const modal = document.getElementById('snapshotsModal');
+    const input = document.getElementById('snapshotNameInput');
+    if (!modal) return;
+    if (input) input.value = '';
+    await renderSnapshotsModal();
+    modal.style.display = 'flex';
+    if (input) setTimeout(() => input.focus(), 0);
+    return;
+  }
+
+  if (action === 'cancel-snapshots-form') {
+    const modal = document.getElementById('snapshotsModal');
+    if (modal) modal.style.display = 'none';
+    return;
+  }
+
+  if (action === 'restore-snapshot') {
+    const snapshotId = actionEl.dataset.snapshotId;
+    if (!snapshotId) return;
+    const opened = await restoreWorkspaceSnapshot(snapshotId);
+    await renderDashboard();
+    showToast(t('restoredSnapshot', opened));
+    return;
+  }
+
+  if (action === 'delete-snapshot') {
+    const snapshotId = actionEl.dataset.snapshotId;
+    if (!snapshotId) return;
+    const ok = await showConfirm({
+      message: t('confirmDeleteSnapshot'),
+      okLabel: t('remove'),
+    });
+    if (!ok) return;
+    await removeWorkspaceSnapshot(snapshotId);
+    await renderSnapshotsModal();
+    showToast(t('snapshotDeleted'));
+    return;
+  }
+
+  if (action === 'run-command-palette-item') {
+    const index = parseInt(actionEl.dataset.commandIndex, 10);
+    await runCommandPaletteItem(Number.isNaN(index) ? 0 : index);
     return;
   }
 
@@ -239,6 +312,17 @@ document.addEventListener('click', async (e) => {
   if (e.target.id === 'settingsModal') {
     const modal = document.getElementById('settingsModal');
     if (modal) modal.style.display = 'none';
+    return;
+  }
+
+  if (e.target.id === 'snapshotsModal') {
+    const modal = document.getElementById('snapshotsModal');
+    if (modal) modal.style.display = 'none';
+    return;
+  }
+
+  if (e.target.id === 'commandPaletteModal') {
+    closeCommandPalette();
     return;
   }
 
@@ -642,6 +726,59 @@ document.addEventListener('click', (e) => {
 
 // Escape closes whichever overlay is open.
 document.addEventListener('keydown', (e) => {
+  if (isCommandPaletteOpen()) {
+    const input = document.getElementById('commandPaletteInput');
+    const matches = getCommandPaletteMatches(input ? input.value : '');
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeCommandPalette();
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      commandPaletteSelectedIndex = Math.min(commandPaletteSelectedIndex + 1, Math.max(matches.length - 1, 0));
+      renderCommandPaletteResults(input ? input.value : '');
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      commandPaletteSelectedIndex = Math.max(commandPaletteSelectedIndex - 1, 0);
+      renderCommandPaletteResults(input ? input.value : '');
+      return;
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      void runCommandPaletteItem();
+      return;
+    }
+  }
+
+  const target = e.target;
+  const isTyping = target && (
+    target.tagName === 'INPUT' ||
+    target.tagName === 'TEXTAREA' ||
+    target.isContentEditable
+  );
+  if (!isTyping && e.code === 'Space') {
+    commandPaletteSpacePending = true;
+    if (commandPaletteSpaceTimer) clearTimeout(commandPaletteSpaceTimer);
+    commandPaletteSpaceTimer = setTimeout(() => {
+      commandPaletteSpacePending = false;
+      commandPaletteSpaceTimer = null;
+    }, 700);
+    return;
+  }
+  if (!isTyping && commandPaletteSpacePending && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    commandPaletteSpacePending = false;
+    if (commandPaletteSpaceTimer) {
+      clearTimeout(commandPaletteSpaceTimer);
+      commandPaletteSpaceTimer = null;
+    }
+    void openCommandPalette();
+    return;
+  }
+
   if (e.key !== 'Escape') return;
   const modal = document.getElementById('favoritesModal');
   if (modal && modal.style.display !== 'none') { closeFavoriteModal(); return; }
@@ -649,6 +786,8 @@ document.addEventListener('keydown', (e) => {
   if (socialsModal && socialsModal.style.display !== 'none') { socialsModal.style.display = 'none'; return; }
   const settingsModal = document.getElementById('settingsModal');
   if (settingsModal && settingsModal.style.display !== 'none') { settingsModal.style.display = 'none'; return; }
+  const snapshotsModal = document.getElementById('snapshotsModal');
+  if (snapshotsModal && snapshotsModal.style.display !== 'none') { snapshotsModal.style.display = 'none'; return; }
   closeFavoriteMenu();
 });
 
@@ -743,6 +882,12 @@ document.addEventListener('paste', async (e) => {
 // ---- Live preview update: when URL field changes and no custom logo
 //      is staged, pull a favicon for the new domain. ----
 document.addEventListener('input', (e) => {
+  if (e.target.id === 'commandPaletteInput') {
+    commandPaletteSelectedIndex = 0;
+    renderCommandPaletteResults(e.target.value);
+    return;
+  }
+
   if (e.target.id !== 'favoritesUrlInput') return;
   if (pendingLogoDataUrl) return;
   const form = document.getElementById('favoritesForm');
@@ -753,6 +898,20 @@ document.addEventListener('input', (e) => {
 
 // ---- Form submissions ----
 document.addEventListener('submit', async (e) => {
+  if (e.target.id === 'snapshotsForm') {
+    e.preventDefault();
+    const input = document.getElementById('snapshotNameInput');
+    const snapshot = await createWorkspaceSnapshot(input ? input.value : '');
+    if (!snapshot) {
+      showToast(t('snapshotEmpty'));
+      return;
+    }
+    if (input) input.value = '';
+    await renderSnapshotsModal();
+    showToast(t('snapshotSaved', snapshot.tabs.length));
+    return;
+  }
+
   if (e.target.id === 'settingsForm') {
     e.preventDefault();
     const uploadInput = document.getElementById('backgroundUploadInput');

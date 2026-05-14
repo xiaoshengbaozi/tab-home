@@ -45,6 +45,8 @@
       <button class="lang-toggle" id="langToggle" data-action="toggle-lang"></button>
       <!-- Theme toggle (sun/moon) — flips between light and dark -->
       <button class="theme-toggle" id="themeToggle" data-action="toggle-theme" title="Toggle theme"></button>
+      <button class="theme-toggle" id="commandPaletteToggle" data-action="open-command-palette" title="Search and commands"></button>
+      <button class="theme-toggle" id="snapshotsToggle" data-action="open-snapshots-modal" title="Workspace snapshots"></button>
       <button class="theme-toggle" id="settingsToggle" data-action="open-settings-modal" title="Open settings"></button>
     </div>
   </header>
@@ -189,6 +191,40 @@
   </form>
 </div>
 
+<div class="favorites-modal command-palette-modal" id="commandPaletteModal" style="display:none">
+  <div class="command-palette-card">
+    <div class="command-search-row">
+      <div class="command-search-icon" aria-hidden="true"></div>
+      <input type="text" class="command-search-input" id="commandPaletteInput" placeholder="Search tabs, favorites, snapshots..." autocomplete="off" spellcheck="false">
+    </div>
+    <div class="command-results" id="commandPaletteResults"></div>
+    <div class="favorites-empty command-empty" id="commandPaletteEmpty" style="display:none">No matches.</div>
+  </div>
+</div>
+
+<div class="favorites-modal" id="snapshotsModal" style="display:none">
+  <form class="favorites-form favorites-form-modal snapshots-form" id="snapshotsForm">
+    <div class="snapshots-head">
+      <div>
+        <div class="favorites-form-label" id="snapshotsTitle">Workspace snapshots</div>
+        <div class="snapshots-subtitle" id="snapshotsSubtitle">Save this tab set and restore it later.</div>
+      </div>
+      <button type="button" class="favorites-form-cancel" data-action="cancel-snapshots-form" id="snapshotsCloseBtn">Close</button>
+    </div>
+
+    <label class="favorites-form-label" for="snapshotNameInput" id="snapshotNameLabel">Snapshot name</label>
+    <div class="snapshot-create-row">
+      <input type="text" class="favorites-form-input" id="snapshotNameInput" placeholder="Focus sprint" autocomplete="off" spellcheck="false">
+      <button type="submit" class="favorites-form-submit" id="snapshotsCreateBtn">Save current</button>
+    </div>
+
+    <div class="snapshots-list" id="snapshotsList"></div>
+    <div class="favorites-empty snapshots-empty" id="snapshotsEmpty" style="display:none">
+      No snapshots yet.
+    </div>
+  </form>
+</div>
+
 <div class="favorites-modal" id="settingsModal" style="display:none">
   <form class="favorites-form favorites-form-modal" id="settingsForm">
     <div class="settings-shell">
@@ -282,6 +318,8 @@
 <script src="tabs.js"></script>
 <script src="favorites-store.js"></script>
 <script src="domain.js"></script>
+<script src="snapshots.js"></script>
+<script src="command-palette.js"></script>
 <script src="ui.js"></script>
 <script src="dashboard.js"></script>
 <script src="events.js"></script>
