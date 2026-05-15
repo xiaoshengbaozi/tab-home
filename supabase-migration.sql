@@ -36,29 +36,54 @@ CREATE TABLE IF NOT EXISTS public.favorites (
 );
 
 CREATE INDEX IF NOT EXISTS idx_favorites_user_id ON public.favorites(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_favorites_user_url ON public.favorites(user_id, url);
+
+CREATE TABLE IF NOT EXISTS public.workspace_snapshots (
+  id          BIGSERIAL PRIMARY KEY,
+  user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  snapshot_id TEXT NOT NULL,
+  name        TEXT NOT NULL DEFAULT '',
+  tabs        JSONB NOT NULL DEFAULT '[]'::jsonb,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_workspace_snapshots_user_id ON public.workspace_snapshots(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_workspace_snapshots_user_snapshot_id ON public.workspace_snapshots(user_id, snapshot_id);
 
 -- ── 2. 启用 RLS ────────────────────────────────────────────────
 
 ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.social_links   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.favorites      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.workspace_snapshots ENABLE ROW LEVEL SECURITY;
 
 -- ── 3. RLS 策略 — 用户只能读写自己的数据 ────────────────────────
 
+DROP POLICY IF EXISTS "Users manage own settings" ON public.user_settings;
 CREATE POLICY "Users manage own settings"
   ON public.user_settings
   FOR ALL
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users manage own social links" ON public.social_links;
 CREATE POLICY "Users manage own social links"
   ON public.social_links
   FOR ALL
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users manage own favorites" ON public.favorites;
 CREATE POLICY "Users manage own favorites"
   ON public.favorites
+  FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users manage own workspace snapshots" ON public.workspace_snapshots;
+CREATE POLICY "Users manage own workspace snapshots"
+  ON public.workspace_snapshots
   FOR ALL
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
