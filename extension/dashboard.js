@@ -408,6 +408,7 @@ async function renderStaticDashboard() {
 
   // --- Render "Long-term Favorites" column ---
   await renderFavoritesColumn();
+  await renderWorkspaceSnapshotsColumn();
 }
 
 async function renderDashboard() {
