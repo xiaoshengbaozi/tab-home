@@ -40,8 +40,11 @@ if (chrome.storage && chrome.storage.onChanged) {
     if (changes.favorites && !_suppressFavReRender) {
       renderFavoritesColumn();
     }
+    if (changes[WORKSPACE_SNAPSHOTS_KEY]) {
+      renderWorkspaceSnapshotsColumn();
+    }
 
-    const syncRelevantKeys = ['favorites', 'socialLinks', 'backgroundSettings', 'theme', 'lang'];
+    const syncRelevantKeys = ['favorites', WORKSPACE_SNAPSHOTS_KEY, 'socialLinks', 'backgroundSettings', 'theme', 'lang'];
     if (syncRelevantKeys.some((key) => key in changes)) {
       await scheduleAutoSyncPush();
     }

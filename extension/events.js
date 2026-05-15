@@ -127,7 +127,7 @@ document.addEventListener('click', async (e) => {
     });
     if (!ok) return;
     await removeWorkspaceSnapshot(snapshotId);
-    await renderSnapshotsModal();
+    await refreshWorkspaceSnapshotsViews();
     showToast(t('snapshotDeleted'));
     return;
   }
@@ -907,7 +907,7 @@ document.addEventListener('submit', async (e) => {
       return;
     }
     if (input) input.value = '';
-    await renderSnapshotsModal();
+    await refreshWorkspaceSnapshotsViews();
     showToast(t('snapshotSaved', snapshot.tabs.length));
     return;
   }
@@ -1067,6 +1067,9 @@ document.addEventListener('drop', async (e) => {
       const tmp = a.slot;
       a.slot = b.slot;
       b.slot = tmp;
+      const now = favoriteTimestamp();
+      a.updatedAt = now;
+      b.updatedAt = now;
       await chrome.storage.local.set({ favorites });
       await renderFavoritesColumn();
     }

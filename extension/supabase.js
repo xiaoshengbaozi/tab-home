@@ -19,6 +19,7 @@ const DEFAULT_SYNC_SESSION = {
   user: null,
 };
 const SYNCED_FAVORITE_URLS_KEY = 'syncedFavoriteUrls';
+const SYNCED_WORKSPACE_SNAPSHOT_IDS_KEY = 'syncedWorkspaceSnapshotIds';
 let syncPushTimer = null;
 let suppressAutoSync = false;
 
@@ -297,6 +298,56 @@ function mergeFavorites(localFavorites, cloudFavorites) {
   return compactFavoriteSlots(Array.from(byUrl.values()));
 }
 
+function normalizeLocalWorkspaceSnapshot(snapshot) {
+  const now = toIsoNow();
+  return {
+    id: String(snapshot.id || `${Date.now()}-${Math.random().toString(16).slice(2)}`),
+    name: snapshot.name || snapshotDefaultName(),
+    createdAt: snapshot.createdAt || snapshot.created_at || now,
+    updatedAt: snapshot.updatedAt || snapshot.updated_at || snapshot.createdAt || snapshot.created_at || now,
+    tabs: Array.isArray(snapshot.tabs) ? snapshot.tabs : [],
+  };
+}
+
+function normalizeCloudWorkspaceSnapshot(snapshot) {
+  return normalizeLocalWorkspaceSnapshot({
+    id: snapshot.snapshot_id || snapshot.id,
+    name: snapshot.name,
+    createdAt: snapshot.created_at,
+    updatedAt: snapshot.updated_at || snapshot.created_at,
+    tabs: Array.isArray(snapshot.tabs) ? snapshot.tabs : [],
+  });
+}
+
+function workspaceSnapshotIsNewer(a, b) {
+  return timeValue(a.updatedAt || a.updated_at || a.createdAt || a.created_at)
+    > timeValue(b.updatedAt || b.updated_at || b.createdAt || b.created_at);
+}
+
+function mergeWorkspaceSnapshots(localSnapshots, cloudSnapshots) {
+  const byId = new Map();
+  for (const snapshot of localSnapshots) {
+    if (!snapshot || !snapshot.id) continue;
+    const localSnapshot = normalizeLocalWorkspaceSnapshot(snapshot);
+    byId.set(localSnapshot.id, localSnapshot);
+  }
+
+  for (const rawCloudSnapshot of cloudSnapshots) {
+    if (!rawCloudSnapshot || !(rawCloudSnapshot.snapshot_id || rawCloudSnapshot.id)) continue;
+    const cloudSnapshot = normalizeCloudWorkspaceSnapshot(rawCloudSnapshot);
+    const localSnapshot = byId.get(cloudSnapshot.id);
+    byId.set(
+      cloudSnapshot.id,
+      localSnapshot && !workspaceSnapshotIsNewer(cloudSnapshot, localSnapshot)
+        ? localSnapshot
+        : cloudSnapshot
+    );
+  }
+
+  return Array.from(byId.values())
+    .sort((a, b) => timeValue(b.createdAt) - timeValue(a.createdAt));
+}
+
 async function getSyncedFavoriteUrls() {
   const stored = await chrome.storage.local.get(SYNCED_FAVORITE_URLS_KEY);
   const urls = stored[SYNCED_FAVORITE_URLS_KEY];
@@ -308,6 +359,19 @@ async function saveSyncedFavoriteUrls(favorites) {
     .map((fav) => fav && fav.url)
     .filter(Boolean);
   await chrome.storage.local.set({ [SYNCED_FAVORITE_URLS_KEY]: Array.from(new Set(urls)) });
+}
+
+async function getSyncedWorkspaceSnapshotIds() {
+  const stored = await chrome.storage.local.get(SYNCED_WORKSPACE_SNAPSHOT_IDS_KEY);
+  const ids = stored[SYNCED_WORKSPACE_SNAPSHOT_IDS_KEY];
+  return Array.isArray(ids) ? new Set(ids.filter(Boolean)) : new Set();
+}
+
+async function saveSyncedWorkspaceSnapshotIds(snapshots) {
+  const ids = snapshots
+    .map((snapshot) => snapshot && snapshot.id)
+    .filter(Boolean);
+  await chrome.storage.local.set({ [SYNCED_WORKSPACE_SNAPSHOT_IDS_KEY]: Array.from(new Set(ids)) });
 }
 
 function formatSyncTime(value) {
@@ -333,13 +397,18 @@ async function pushLocalDataToSupabase() {
   if (!syncSession.accessToken || !syncSession.user || !syncSession.user.id) throw new Error('not signed in');
 
   const userId = syncSession.user.id;
-  const [favorites, socialLinks, backgroundSettings] = await Promise.all([
+  const [favorites, socialLinks, backgroundSettings, workspaceSnapshots] = await Promise.all([
     getFavorites(),
     getSocialLinks(),
     getBackgroundSettings(),
+    getWorkspaceSnapshots(),
   ]);
   const { theme = 'light', lang = 'en' } = await chrome.storage.local.get(['theme', 'lang']);
   const now = toIsoNow();
+  const normalizedFavorites = compactFavoriteSlots(
+    favorites.map((fav, index) => normalizeLocalFavorite(fav, index))
+  );
+  const normalizedSnapshots = workspaceSnapshots.map(normalizeLocalWorkspaceSnapshot);
 
   await supabaseRestRequest(`/user_settings?user_id=eq.${encodeURIComponent(userId)}`, {
     method: 'POST',
@@ -371,10 +440,7 @@ async function pushLocalDataToSupabase() {
     }],
   });
 
-  if (favorites.length > 0) {
-    const normalizedFavorites = compactFavoriteSlots(
-      favorites.map((fav, index) => normalizeLocalFavorite(fav, index))
-    );
+  if (normalizedFavorites.length > 0) {
     await chrome.storage.local.set({ favorites: normalizedFavorites });
 
     await supabaseRestRequest('/favorites?on_conflict=user_id,url', {
@@ -399,7 +465,7 @@ async function pushLocalDataToSupabase() {
     syncSettings,
     accessToken: syncSession.accessToken,
   });
-  const localUrls = new Set(favorites.map((fav) => fav.url).filter(Boolean));
+  const localUrls = new Set(normalizedFavorites.map((fav) => fav.url).filter(Boolean));
   const previouslySyncedUrls = await getSyncedFavoriteUrls();
   const deletedUrls = (Array.isArray(cloudFavorites) ? cloudFavorites : [])
     .map((fav) => fav && fav.url)
@@ -416,7 +482,50 @@ async function pushLocalDataToSupabase() {
     );
   }
 
-  await saveSyncedFavoriteUrls(favorites);
+  await saveSyncedFavoriteUrls(normalizedFavorites);
+
+  if (normalizedSnapshots.length > 0) {
+    await saveWorkspaceSnapshots(normalizedSnapshots);
+
+    await supabaseRestRequest('/workspace_snapshots?on_conflict=user_id,snapshot_id', {
+      method: 'POST',
+      syncSettings,
+      accessToken: syncSession.accessToken,
+      prefer: 'resolution=merge-duplicates,return=minimal',
+      body: normalizedSnapshots.map((snapshot) => ({
+        user_id: userId,
+        snapshot_id: snapshot.id,
+        name: snapshot.name,
+        tabs: snapshot.tabs,
+        created_at: snapshot.createdAt || now,
+        updated_at: snapshot.updatedAt || now,
+      })),
+    });
+  }
+
+  const cloudSnapshots = await supabaseRestRequest(`/workspace_snapshots?user_id=eq.${encodeURIComponent(userId)}&select=snapshot_id`, {
+    method: 'GET',
+    syncSettings,
+    accessToken: syncSession.accessToken,
+  });
+  const localSnapshotIds = new Set(normalizedSnapshots.map((snapshot) => snapshot.id).filter(Boolean));
+  const previouslySyncedSnapshotIds = await getSyncedWorkspaceSnapshotIds();
+  const deletedSnapshotIds = (Array.isArray(cloudSnapshots) ? cloudSnapshots : [])
+    .map((snapshot) => snapshot && snapshot.snapshot_id)
+    .filter((id) => id && !localSnapshotIds.has(id) && previouslySyncedSnapshotIds.has(id));
+
+  for (const id of deletedSnapshotIds) {
+    await supabaseRestRequest(
+      `/workspace_snapshots?user_id=eq.${encodeURIComponent(userId)}&snapshot_id=eq.${encodeURIComponent(id)}`,
+      {
+        method: 'DELETE',
+        syncSettings,
+        accessToken: syncSession.accessToken,
+      }
+    );
+  }
+
+  await saveSyncedWorkspaceSnapshotIds(normalizedSnapshots);
 }
 
 async function pullCloudDataFromSupabase() {
@@ -425,7 +534,7 @@ async function pullCloudDataFromSupabase() {
   if (!syncSession.accessToken || !syncSession.user || !syncSession.user.id) throw new Error('not signed in');
 
   const userId = syncSession.user.id;
-  const [settingsRows, socialRows, favoritesRows] = await Promise.all([
+  const [settingsRows, socialRows, favoritesRows, snapshotRows] = await Promise.all([
     supabaseRestRequest(`/user_settings?user_id=eq.${encodeURIComponent(userId)}&select=*`, {
       method: 'GET',
       syncSettings,
@@ -441,22 +550,32 @@ async function pullCloudDataFromSupabase() {
       syncSettings,
       accessToken: syncSession.accessToken,
     }),
+    supabaseRestRequest(`/workspace_snapshots?user_id=eq.${encodeURIComponent(userId)}&select=*&order=created_at.desc`, {
+      method: 'GET',
+      syncSettings,
+      accessToken: syncSession.accessToken,
+    }),
   ]);
 
   const settingsRow = Array.isArray(settingsRows) ? settingsRows[0] : null;
   const socialRow = Array.isArray(socialRows) ? socialRows[0] : null;
   const cloudFavorites = Array.isArray(favoritesRows) ? favoritesRows : [];
+  const cloudSnapshots = Array.isArray(snapshotRows) ? snapshotRows : [];
   const localFavorites = await getFavorites();
+  const localSnapshots = await getWorkspaceSnapshots();
   const mergedFavorites = mergeFavorites(localFavorites, cloudFavorites);
+  const mergedSnapshots = mergeWorkspaceSnapshots(localSnapshots, cloudSnapshots);
 
   suppressAutoSync = true;
   try {
     if (settingsRow) {
       if (settingsRow.theme) await chrome.storage.local.set({ theme: settingsRow.theme });
       if (settingsRow.lang) await chrome.storage.local.set({ lang: settingsRow.lang });
+      const backgroundImage = settingsRow.background_image_url || '';
+      const isInlineBackgroundImage = /^data:image\//i.test(backgroundImage);
       await saveBackgroundSettings({
-        imageUrl: settingsRow.background_image_url || '',
-        imageDataUrl: '',
+        imageUrl: isInlineBackgroundImage ? '' : backgroundImage,
+        imageDataUrl: isInlineBackgroundImage ? backgroundImage : '',
         brightness: settingsRow.background_brightness ?? DEFAULT_BACKGROUND_SETTINGS.brightness,
         blur: settingsRow.background_blur ?? DEFAULT_BACKGROUND_SETTINGS.blur,
       });
@@ -473,7 +592,9 @@ async function pullCloudDataFromSupabase() {
     await chrome.storage.local.set({
       favorites: mergedFavorites,
     });
+    await saveWorkspaceSnapshots(mergedSnapshots);
     await saveSyncedFavoriteUrls(mergedFavorites);
+    await saveSyncedWorkspaceSnapshotIds(mergedSnapshots);
 
     await loadLang();
     await loadTheme();

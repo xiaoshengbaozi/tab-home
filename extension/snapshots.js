@@ -26,6 +26,13 @@ async function saveWorkspaceSnapshots(snapshots) {
   await chrome.storage.local.set({ [WORKSPACE_SNAPSHOTS_KEY]: snapshots });
 }
 
+async function refreshWorkspaceSnapshotsViews() {
+  await Promise.all([
+    renderSnapshotsModal(),
+    renderWorkspaceSnapshotsColumn(),
+  ]);
+}
+
 function snapshotDefaultName() {
   try {
     const locale = currentLang === 'zh' ? 'zh-CN' : 'en-US';
@@ -148,6 +155,22 @@ function renderSnapshotItem(snapshot) {
 async function renderSnapshotsModal() {
   const list = document.getElementById('snapshotsList');
   const empty = document.getElementById('snapshotsEmpty');
+  if (!list || !empty) return;
+
+  const snapshots = await getWorkspaceSnapshots();
+  if (snapshots.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+
+  empty.style.display = 'none';
+  list.innerHTML = snapshots.map(renderSnapshotItem).join('');
+}
+
+async function renderWorkspaceSnapshotsColumn() {
+  const list = document.getElementById('workspaceSnapshotsList');
+  const empty = document.getElementById('workspaceSnapshotsEmpty');
   if (!list || !empty) return;
 
   const snapshots = await getWorkspaceSnapshots();

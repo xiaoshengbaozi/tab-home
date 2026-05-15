@@ -38,10 +38,24 @@ create table if not exists public.favorites (
 create index if not exists favorites_user_id_idx on public.favorites(user_id);
 create unique index if not exists favorites_user_url_idx on public.favorites(user_id, url);
 
+create table if not exists public.workspace_snapshots (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  snapshot_id text not null,
+  name text not null default '',
+  tabs jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists workspace_snapshots_user_id_idx on public.workspace_snapshots(user_id);
+create unique index if not exists workspace_snapshots_user_snapshot_id_idx on public.workspace_snapshots(user_id, snapshot_id);
+
 alter table public.profiles enable row level security;
 alter table public.user_settings enable row level security;
 alter table public.social_links enable row level security;
 alter table public.favorites enable row level security;
+alter table public.workspace_snapshots enable row level security;
 
 create policy "profiles_select_own" on public.profiles
 for select using (auth.uid() = id);
@@ -80,4 +94,16 @@ create policy "favorites_update_own" on public.favorites
 for update using (auth.uid() = user_id);
 
 create policy "favorites_delete_own" on public.favorites
+for delete using (auth.uid() = user_id);
+
+create policy "workspace_snapshots_select_own" on public.workspace_snapshots
+for select using (auth.uid() = user_id);
+
+create policy "workspace_snapshots_insert_own" on public.workspace_snapshots
+for insert with check (auth.uid() = user_id);
+
+create policy "workspace_snapshots_update_own" on public.workspace_snapshots
+for update using (auth.uid() = user_id);
+
+create policy "workspace_snapshots_delete_own" on public.workspace_snapshots
 for delete using (auth.uid() = user_id);

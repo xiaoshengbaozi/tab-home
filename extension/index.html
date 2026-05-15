@@ -62,6 +62,7 @@
 
     <!-- LEFT COLUMN: Long-term favorites -->
     <div class="favorites-column" id="favoritesColumn">
+      <section class="favorites-section">
       <div class="section-header">
         <h2>Favorites</h2>
         <div class="section-line"></div>
@@ -76,6 +77,22 @@
       <!-- Empty state -->
       <div class="favorites-empty" id="favoritesEmpty" style="display:none">
         Nothing pinned yet. Click + to add a URL, or star a tab on the right.
+      </div>
+      </section>
+
+    </div>
+
+    <div class="workspace-snapshots-column" id="workspaceSnapshotsSection">
+      <div class="section-header">
+        <h2 id="workspaceSnapshotsColumnTitle">Workspace snapshots</h2>
+        <div class="section-line"></div>
+        <button class="favorites-add-btn" id="workspaceSnapshotsAddBtn" data-action="open-snapshots-modal" title="Workspace snapshots">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2m4-2a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z" /></svg>
+        </button>
+      </div>
+      <div class="snapshots-list snapshots-column-list" id="workspaceSnapshotsList"></div>
+      <div class="favorites-empty snapshots-empty" id="workspaceSnapshotsEmpty" style="display:none">
+        No snapshots yet.
       </div>
     </div>
 

@@ -72,7 +72,7 @@ function applyStaticI18n() {
   }
 
   // Favorites column
-  set('.favorites-column .section-header h2', 'favorites');
+  set('.favorites-section .section-header h2', 'favorites');
   set('#favoritesAddToggle', 'addAFavorite', 'title');
   set('#favoritesUrlLabel', 'urlLabel');
   set('#favoritesTitleLabel', 'titleLabel');
@@ -95,12 +95,15 @@ function applyStaticI18n() {
   set('.stat-label', 'statTabs');
   set('#footerSocialsEdit', 'editLinks', 'title');
   set('#snapshotsTitle', 'workspaceSnapshots');
+  set('#workspaceSnapshotsColumnTitle', 'workspaceSnapshots');
+  set('#workspaceSnapshotsAddBtn', 'workspaceSnapshots', 'title');
   set('#snapshotsSubtitle', 'snapshotsSubtitle');
   set('#snapshotNameLabel', 'snapshotName');
   set('#snapshotNameInput', 'snapshotPlaceholder', 'placeholder');
   set('#snapshotsCreateBtn', 'saveCurrentSnapshot');
   set('#snapshotsCloseBtn', 'cancel');
   set('#snapshotsEmpty', 'noSnapshots');
+  set('#workspaceSnapshotsEmpty', 'noSnapshots');
   set('#commandPaletteInput', 'commandPlaceholder', 'placeholder');
   set('#commandPaletteEmpty', 'commandNoMatches');
   const socialsFormSubmit = document.getElementById('socialsFormSubmit');
@@ -138,7 +141,9 @@ function applyStaticI18n() {
 function applyBackgroundSettings(settings) {
   const bg = document.getElementById('pageBackground');
   if (!bg) return;
-  const source = settings.imageDataUrl || normalizeSocialUrl(settings.imageUrl);
+  const rawImageUrl = String(settings.imageUrl || '').trim();
+  const source = settings.imageDataUrl
+    || (/^(data|blob|file):/i.test(rawImageUrl) ? rawImageUrl : normalizeSocialUrl(rawImageUrl));
   const hasImage = !!source;
   const brightness = Math.max(35, Math.min(100, Number(settings.brightness || 72)));
   const blur = Math.max(0, Number(settings.blur || 0));
