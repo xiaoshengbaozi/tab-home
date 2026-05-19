@@ -138,8 +138,15 @@ function renderDomainCard(group, favoritedUrls = new Set()) {
       ${ICONS.close}
     </button>`;
 
+  const cardClasses = [
+    'mission-card',
+    'domain-card',
+    tabCount === 1 ? 'single-tab-domain' : '',
+    hasDupes ? 'has-amber-bar' : ''
+  ].filter(Boolean).join(' ');
+
   return `
-    <div class="mission-card domain-card ${hasDupes ? 'has-amber-bar' : ''}" data-domain-id="${stableId}">
+    <div class="${cardClasses}" data-domain-id="${stableId}">
       <div class="status-bar"></div>
       <div class="mission-content">
         <div class="mission-top">
@@ -175,24 +182,10 @@ async function renderFavoritesColumn() {
     }
     empty.style.display = 'none';
 
-    const bySlot = new Map();
-    let maxSlot = -1;
-    for (const it of items) {
-      const s = it.slot ?? 0;
-      bySlot.set(s, it);
-      if (s > maxSlot) maxSlot = s;
-    }
-    const TRAILING_EMPTY_BUFFER = 9;   // ~one extra row of drop targets
-    const totalSlots = maxSlot + 1 + TRAILING_EMPTY_BUFFER;
-
-    let html = '';
-    for (let i = 0; i < totalSlots; i++) {
-      const item = bySlot.get(i);
-      html += item
-        ? renderFavoriteItem(item)
-        : `<div class="favorite-slot-empty" data-slot="${i}"></div>`;
-    }
-    list.innerHTML = html;
+    list.innerHTML = items
+      .sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0))
+      .map(renderFavoriteItem)
+      .join('');
   } catch (err) {
     console.warn('[wolfy] Could not load favorites:', err);
   }

@@ -1008,7 +1008,7 @@ document.addEventListener('submit', async (e) => {
 let _draggedFavId = null;
 
 function clearDropMarkers() {
-  document.querySelectorAll('.favorite-item.drop-target, .favorite-slot-empty.drop-target')
+  document.querySelectorAll('.favorite-item.drop-target')
     .forEach(el => el.classList.remove('drop-target'));
 }
 
@@ -1042,13 +1042,6 @@ document.addEventListener('dragover', (e) => {
     return;
   }
 
-  const slot = e.target.closest('.favorite-slot-empty');
-  if (slot) {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    clearDropMarkers();
-    slot.classList.add('drop-target');
-  }
 });
 
 document.addEventListener('drop', async (e) => {
@@ -1071,18 +1064,6 @@ document.addEventListener('drop', async (e) => {
       a.updatedAt = now;
       b.updatedAt = now;
       await chrome.storage.local.set({ favorites });
-      await renderFavoritesColumn();
-    }
-    return;
-  }
-
-  const slot = e.target.closest('.favorite-slot-empty');
-  if (slot) {
-    e.preventDefault();
-    clearDropMarkers();
-    const newSlot = parseInt(slot.dataset.slot, 10);
-    if (!Number.isNaN(newSlot)) {
-      await setFavoriteSlot(draggedId, newSlot);
       await renderFavoritesColumn();
     }
     return;
