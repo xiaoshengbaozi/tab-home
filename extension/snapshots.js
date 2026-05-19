@@ -140,15 +140,15 @@ function renderSnapshotItem(snapshot) {
 
   return `
     <div class="snapshot-item">
-      <div class="snapshot-main">
+      <div class="snapshot-row">
         <div class="snapshot-name">${name}</div>
-        <div class="snapshot-meta">${t('snapshotMeta', count, date)}</div>
-        ${preview ? `<div class="snapshot-preview">${preview}</div>` : ''}
+        <div class="snapshot-actions">
+          <button type="button" class="snapshot-action-btn" data-action="restore-snapshot" data-snapshot-id="${escapeHtml(snapshot.id)}" title="${t('restoreSnapshot')}">${t('restore')}</button>
+          <button type="button" class="snapshot-action-btn snapshot-action-danger" data-action="delete-snapshot" data-snapshot-id="${escapeHtml(snapshot.id)}" title="${t('deleteSnapshot')}">${t('remove')}</button>
+        </div>
       </div>
-      <div class="snapshot-actions">
-        <button type="button" class="snapshot-action-btn" data-action="restore-snapshot" data-snapshot-id="${escapeHtml(snapshot.id)}" title="${t('restoreSnapshot')}">${t('restore')}</button>
-        <button type="button" class="snapshot-action-btn snapshot-action-danger" data-action="delete-snapshot" data-snapshot-id="${escapeHtml(snapshot.id)}" title="${t('deleteSnapshot')}">${t('remove')}</button>
-      </div>
+      <div class="snapshot-meta">${t('snapshotMeta', count, date)}</div>
+      ${preview ? `<div class="snapshot-preview">${preview}</div>` : ''}
     </div>`;
 }
 

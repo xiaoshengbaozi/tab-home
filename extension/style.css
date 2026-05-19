@@ -550,8 +550,9 @@ header {
 }
 
 .missions {
-  columns: 280px;
-  column-gap: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
   margin-bottom: 40px;
 }
 
@@ -562,8 +563,6 @@ header {
 .mission-card {
   position: relative;
   overflow: hidden;
-  break-inside: avoid;
-  margin-bottom: 16px;
   padding: 18px 18px 16px;
   display: flex;
   flex-direction: column;
@@ -746,14 +745,41 @@ header {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: margin-right 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.page-chip.clickable:hover .chip-text {
+  margin-right: 100px;
 }
 
 .chip-actions {
+  position: absolute;
+  right: 10px;
+  top: 50%;
   display: flex;
   align-items: center;
   gap: 4px;
-  flex-shrink: 0;
-  margin-left: auto;
+  padding-left: 18px;
+  opacity: 0;
+  transform: translateY(-50%) translateX(8px);
+  pointer-events: none;
+  transition: opacity 0.22s ease, transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  z-index: 1;
+}
+
+.chip-actions::before {
+  content: '';
+  position: absolute;
+  inset: -6px -4px -6px 0;
+  border-radius: 16px;
+  background: linear-gradient(to right, transparent, var(--surface-dim) 40%);
+  z-index: -1;
+}
+
+.page-chip.clickable:hover .chip-actions {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+  pointer-events: auto;
 }
 
 .chip-action {
@@ -1285,10 +1311,9 @@ header {
 }
 
 .snapshot-item {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 14px;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   padding: 14px;
   border: 1px solid var(--warm-gray);
   border-radius: 18px;
@@ -1297,7 +1322,18 @@ header {
     var(--card-bg);
 }
 
+.snapshot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
 .snapshots-column-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
   max-height: none;
   overflow: visible;
 }
@@ -1314,13 +1350,6 @@ header {
 .snapshots-column-list .snapshot-action-btn {
   min-height: 30px;
   padding: 0 10px;
-}
-
-.snapshot-main {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
 }
 
 .snapshot-name {
