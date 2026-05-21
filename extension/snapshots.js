@@ -124,6 +124,32 @@ function formatSnapshotDate(value) {
   }
 }
 
+const SNAPSHOT_PALETTES = [
+  { bg: '58, 181, 78', ink: '255, 255, 255', muted: '226, 255, 229' },
+  { bg: '246, 45, 49', ink: '255, 255, 255', muted: '255, 226, 226' },
+  { bg: '43, 160, 238', ink: '255, 255, 255', muted: '224, 244, 255' },
+  { bg: '247, 116, 31', ink: '255, 255, 255', muted: '255, 235, 214' },
+  { bg: '99, 87, 233', ink: '255, 255, 255', muted: '232, 229, 255' },
+  { bg: '32, 176, 217', ink: '255, 255, 255', muted: '219, 248, 255' },
+  { bg: '180, 117, 47', ink: '255, 255, 255', muted: '255, 236, 210' },
+  { bg: '197, 72, 231', ink: '255, 255, 255', muted: '249, 224, 255' },
+  { bg: '117, 163, 195', ink: '255, 255, 255', muted: '226, 242, 255' },
+];
+
+function snapshotPaletteIndex(id) {
+  const input = String(id || '');
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) {
+    hash = ((hash << 5) - hash + input.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash) % SNAPSHOT_PALETTES.length;
+}
+
+function snapshotPaletteStyle(snapshot) {
+  const palette = SNAPSHOT_PALETTES[snapshotPaletteIndex(snapshot.id)];
+  return `--snapshot-bg-rgb:${palette.bg};--snapshot-ink-rgb:${palette.ink};--snapshot-muted-rgb:${palette.muted};`;
+}
+
 function renderSnapshotItem(snapshot) {
   const name = escapeHtml(snapshot.name || snapshotDefaultName());
   const date = escapeHtml(formatSnapshotDate(snapshot.createdAt));
@@ -139,7 +165,7 @@ function renderSnapshotItem(snapshot) {
   );
 
   return `
-    <div class="snapshot-item">
+    <div class="snapshot-item snapshot-color-card" style="${snapshotPaletteStyle(snapshot)}">
       <div class="snapshot-row">
         <div class="snapshot-name">${name}</div>
         <div class="snapshot-actions">

@@ -370,6 +370,7 @@ async function renderStaticDashboard() {
       if (pinnedSectionTitle) pinnedSectionTitle.textContent = t('pinned');
       if (pinnedSectionCount) pinnedSectionCount.innerHTML = `<span class="section-badge">${t('nTabsCount', pinnedRealTabs.length)}</span>`;
       pinnedMissionsEl.innerHTML = pinnedDomainGroups.map(g => renderDomainCard(g, favoritedUrls)).join('');
+      if (typeof applyFaviconChipColors === 'function') applyFaviconChipColors(pinnedMissionsEl);
       pinnedSubSection.style.display = 'block';
     } else {
       pinnedSubSection.style.display = 'none';
@@ -385,6 +386,7 @@ async function renderStaticDashboard() {
       openTabsSectionAction.innerHTML = `<button class="action-btn close-tabs" data-action="close-all-open-tabs">${ICONS.close} ${t('closeAllN', regularRealTabs.length)}</button>`;
     }
     openTabsMissionsEl.innerHTML = domainGroups.map(g => renderDomainCard(g, favoritedUrls)).join('');
+    if (typeof applyFaviconChipColors === 'function') applyFaviconChipColors(openTabsMissionsEl);
     openTabsSubSection.style.display = 'block';
   } else if (openTabsSubSection) {
     openTabsSubSection.style.display = 'none';

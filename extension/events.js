@@ -256,6 +256,7 @@ document.addEventListener('click', async (e) => {
   // ---- Theme toggle (light / dark) ----
   if (action === 'toggle-theme') {
     await toggleTheme();
+    if (typeof refreshFaviconChipColors === 'function') refreshFaviconChipColors();
     return;
   }
 

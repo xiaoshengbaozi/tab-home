@@ -579,6 +579,39 @@ header {
   transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
 }
 
+.mission-card.has-favicon-color {
+  color: rgb(var(--chip-ink-rgb));
+  border-color: rgba(255, 255, 255, 0.2);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.16), transparent 42%),
+    linear-gradient(180deg, rgba(var(--chip-primary-rgb), 0.92), rgba(var(--chip-bg-rgb), 0.96));
+  box-shadow: 0 18px 44px -34px rgba(var(--chip-primary-rgb), 0.78);
+}
+
+[data-theme="light"] .mission-card.has-favicon-color {
+  border-color: rgba(var(--chip-primary-rgb), 0.28);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.28), transparent 46%),
+    linear-gradient(180deg, rgba(var(--chip-primary-rgb), 0.78), rgba(var(--chip-bg-rgb), 0.94));
+  box-shadow: 0 18px 42px -32px rgba(var(--chip-primary-rgb), 0.68);
+}
+
+.mission-card.has-favicon-color::before {
+  height: auto;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 88% 16%, rgba(255, 255, 255, 0.28), transparent 0 18%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.02), rgba(0, 0, 0, 0.12));
+  opacity: 1;
+}
+
+[data-theme="light"] .mission-card.has-favicon-color::before {
+  background:
+    radial-gradient(circle at 88% 16%, rgba(255, 255, 255, 0.34), transparent 0 18%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.08));
+}
+
 .mission-card::before {
   content: '';
   position: absolute;
@@ -609,6 +642,16 @@ header {
   transform: translateY(-2px);
 }
 
+.mission-card.has-favicon-color:hover {
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow: 0 24px 64px -38px rgba(var(--chip-primary-rgb), 0.82);
+}
+
+[data-theme="light"] .mission-card.has-favicon-color:hover {
+  border-color: rgba(var(--chip-primary-rgb), 0.42);
+  box-shadow: 0 24px 64px -38px rgba(var(--chip-primary-rgb), 0.72);
+}
+
 .mission-card.closing {
   opacity: 0;
   transform: scale(0.92);
@@ -630,6 +673,8 @@ header {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
+  position: relative;
+  z-index: 1;
 }
 
 .mission-top {
@@ -651,6 +696,10 @@ header {
   color: var(--ink);
 }
 
+.mission-card.has-favicon-color .mission-name {
+  color: rgb(var(--chip-ink-rgb));
+}
+
 .open-tabs-badge {
   display: inline-flex;
   align-items: center;
@@ -663,6 +712,12 @@ header {
   background: rgba(106, 208, 255, 0.12);
   border: 1px solid rgba(106, 208, 255, 0.16);
   border-radius: 999px;
+}
+
+.mission-card.has-favicon-color .open-tabs-badge {
+  color: rgb(var(--chip-ink-rgb));
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.26);
 }
 
 .open-tabs-badge svg {
@@ -714,19 +769,103 @@ header {
   padding-bottom: 8px;
 }
 
+.single-tab-domain .mission-pages .page-chip.has-favicon-color {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.single-tab-domain .mission-pages .page-chip.has-favicon-color.clickable:hover {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.domain-card:not(.single-tab-domain) .mission-pages .page-chip.has-favicon-color {
+  color: rgb(var(--chip-ink-rgb));
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+}
+
+.domain-card:not(.single-tab-domain) .mission-pages .page-chip.has-favicon-color.clickable:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+}
+
+[data-theme="light"] .domain-card:not(.single-tab-domain) .mission-pages .page-chip.has-favicon-color.clickable:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.domain-card:not(.single-tab-domain) .mission-pages .page-chip.has-favicon-color .chip-actions::before {
+  background: linear-gradient(90deg, transparent, rgba(var(--chip-bg-rgb), 0.72) 28%, rgba(var(--chip-bg-rgb), 0.9));
+}
+
+.domain-card:not(.single-tab-domain) .mission-pages .page-chip.has-favicon-color .chip-action {
+  color: rgba(var(--chip-ink-rgb), 0.78);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.domain-card:not(.single-tab-domain) .mission-pages .page-chip.has-favicon-color .chip-action:hover {
+  color: rgb(var(--chip-ink-rgb));
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.domain-card:not(.single-tab-domain) .mission-pages .page-chip.has-favicon-color .chip-close:hover {
+  color: var(--status-abandoned);
+  background: rgba(255, 77, 120, 0.14);
+}
+
 .page-chip {
+  --chip-bg-rgb: transparent;
+  --chip-ink-rgb: 245, 248, 255;
+  --chip-muted-rgb: 208, 215, 233;
+  --chip-action-bg-rgb: transparent;
+  --chip-action-hover-rgb: 138, 173, 255;
+  --chip-border-rgb: 210, 225, 255;
   position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 0;
-  padding: 9px 2px;
+  padding: 9px 8px;
   font-size: 13px;
   line-height: 1.4;
   color: var(--ink);
   background: transparent;
   border: 0;
   border-bottom: 1px solid rgba(210, 225, 255, 0.08);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
+}
+
+[data-theme="light"] .page-chip {
+  --chip-ink-rgb: 19, 32, 61;
+  --chip-muted-rgb: 67, 84, 117;
+}
+
+.page-chip.has-favicon-color {
+  color: rgb(var(--chip-ink-rgb));
+  background:
+    linear-gradient(90deg, rgba(var(--chip-primary-rgb), 0.18), rgba(var(--chip-bg-rgb), 0.94) 42%),
+    rgb(var(--chip-bg-rgb));
+  border: 1px solid rgba(var(--chip-border-rgb), 0.34);
+  box-shadow: 0 8px 24px rgba(var(--chip-primary-rgb), 0.12);
+}
+
+[data-theme="light"] .page-chip.has-favicon-color {
+  background:
+    linear-gradient(90deg, rgba(var(--chip-primary-rgb), 0.24), rgba(var(--chip-bg-rgb), 0.98) 48%),
+    rgb(var(--chip-bg-rgb));
+  border-color: rgba(var(--chip-primary-rgb), 0.34);
+  box-shadow: 0 8px 24px rgba(var(--chip-primary-rgb), 0.12);
+}
+
+.page-chip.has-favicon-color + .page-chip.has-favicon-color {
+  margin-top: 6px;
 }
 
 .page-chip:last-child,
@@ -741,6 +880,22 @@ header {
 
 .page-chip.clickable:hover {
   background: transparent;
+}
+
+.page-chip.has-favicon-color.clickable:hover {
+  background:
+    linear-gradient(90deg, rgba(var(--chip-primary-rgb), 0.26), rgba(var(--chip-bg-rgb), 0.98) 44%),
+    rgb(var(--chip-bg-rgb));
+  border-color: rgba(var(--chip-primary-rgb), 0.58);
+  box-shadow: 0 10px 28px rgba(var(--chip-primary-rgb), 0.18);
+}
+
+[data-theme="light"] .page-chip.has-favicon-color.clickable:hover {
+  background:
+    linear-gradient(90deg, rgba(var(--chip-primary-rgb), 0.32), rgba(var(--chip-bg-rgb), 1) 48%),
+    rgb(var(--chip-bg-rgb));
+  border-color: rgba(var(--chip-primary-rgb), 0.48);
+  box-shadow: 0 10px 28px rgba(var(--chip-primary-rgb), 0.16);
 }
 
 .page-chips-overflow {
@@ -760,6 +915,8 @@ header {
   height: 18px;
   flex-shrink: 0;
   border-radius: 5px;
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 0 0 1px rgba(var(--chip-ink-rgb), 0.1);
 }
 
 .chip-text {
@@ -799,6 +956,10 @@ header {
   z-index: -1;
 }
 
+.page-chip.has-favicon-color .chip-actions::before {
+  background: linear-gradient(90deg, transparent, rgba(var(--chip-bg-rgb), 0.96) 28%, rgba(var(--chip-bg-rgb), 1));
+}
+
 .page-chip.clickable:hover .chip-actions {
   opacity: 1;
   transform: translateY(-50%) translateX(0);
@@ -820,6 +981,16 @@ header {
   transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
 
+.page-chip.has-favicon-color .chip-action {
+  background: rgba(var(--chip-action-bg-rgb), 0.5);
+  color: rgba(var(--chip-muted-rgb), 0.94);
+  opacity: 0.86;
+}
+
+[data-theme="light"] .page-chip.has-favicon-color .chip-action {
+  background: rgba(var(--chip-action-bg-rgb), 0.34);
+}
+
 .chip-action svg {
   width: 15px;
   height: 15px;
@@ -836,9 +1007,19 @@ header {
   color: var(--ink);
 }
 
+.page-chip.has-favicon-color .chip-action:hover {
+  background: rgba(var(--chip-action-hover-rgb), 0.74);
+  color: rgb(var(--chip-ink-rgb));
+}
+
 .chip-close:hover {
   background: rgba(255, 77, 120, 0.14);
   color: var(--status-abandoned);
+}
+
+.page-chip.has-favicon-color .chip-close:hover {
+  background: rgba(255, 77, 120, 0.2);
+  color: rgb(var(--chip-ink-rgb));
 }
 
 .chip-pin.active,
@@ -846,6 +1027,12 @@ header {
   opacity: 1;
   color: var(--accent-slate);
   background: rgba(106, 208, 255, 0.14);
+}
+
+.page-chip.has-favicon-color .chip-pin.active,
+.page-chip.has-favicon-color .chip-star.active {
+  color: rgb(var(--chip-ink-rgb));
+  background: rgba(var(--chip-primary-rgb), 0.32);
 }
 
 .chip-star.active svg,
@@ -873,6 +1060,12 @@ header {
   transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
 
+.page-chip.has-favicon-color .chip-dupe-badge {
+  color: rgb(var(--chip-ink-rgb));
+  background: rgba(var(--chip-action-bg-rgb), 0.56);
+  border-color: rgba(var(--chip-border-rgb), 0.44);
+}
+
 .chip-dupe-badge .dupe-count,
 .chip-dupe-badge .dupe-action {
   grid-area: 1 / 1;
@@ -894,6 +1087,11 @@ header {
   background: rgba(106, 208, 255, 0.18);
   border-color: var(--accent-slate);
   transform: translateY(-1px);
+}
+
+.page-chip.has-favicon-color .chip-dupe-badge:hover {
+  background: rgba(var(--chip-primary-rgb), 0.32);
+  border-color: rgba(var(--chip-primary-rgb), 0.62);
 }
 
 .chip-has-dupes {
@@ -1334,6 +1532,9 @@ header {
 }
 
 .snapshot-item {
+  --snapshot-bg-rgb: 43, 160, 238;
+  --snapshot-ink-rgb: 255, 255, 255;
+  --snapshot-muted-rgb: 224, 244, 255;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1343,6 +1544,46 @@ header {
   background:
     linear-gradient(180deg, var(--surface-raised), var(--surface-dim)),
     var(--card-bg);
+}
+
+.snapshot-color-card {
+  position: relative;
+  overflow: hidden;
+  color: rgb(var(--snapshot-ink-rgb));
+  border-color: rgba(255, 255, 255, 0.2);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.16), transparent 42%),
+    linear-gradient(180deg, rgba(var(--snapshot-bg-rgb), 1), rgba(var(--snapshot-bg-rgb), 0.86));
+  box-shadow: 0 18px 44px -34px rgba(var(--snapshot-bg-rgb), 0.75);
+}
+
+[data-theme="light"] .snapshot-color-card {
+  border-color: rgba(var(--snapshot-bg-rgb), 0.24);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.26), transparent 46%),
+    linear-gradient(180deg, rgba(var(--snapshot-bg-rgb), 0.9), rgba(var(--snapshot-bg-rgb), 0.76));
+  box-shadow: 0 18px 42px -34px rgba(var(--snapshot-bg-rgb), 0.66);
+}
+
+.snapshot-color-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 88% 18%, rgba(255, 255, 255, 0.28), transparent 0 18%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.02), rgba(0, 0, 0, 0.12));
+}
+
+[data-theme="light"] .snapshot-color-card::before {
+  background:
+    radial-gradient(circle at 88% 18%, rgba(255, 255, 255, 0.32), transparent 0 18%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.08));
+}
+
+.snapshot-color-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .snapshot-row {
@@ -1385,11 +1626,20 @@ header {
   text-overflow: ellipsis;
 }
 
+.snapshot-color-card .snapshot-name {
+  color: rgb(var(--snapshot-ink-rgb));
+}
+
 .snapshot-meta,
 .snapshot-preview {
   color: var(--muted);
   font-size: 11px;
   line-height: 1.35;
+}
+
+.snapshot-color-card .snapshot-meta,
+.snapshot-color-card .snapshot-preview {
+  color: rgba(var(--snapshot-muted-rgb), 0.9);
 }
 
 .snapshot-preview {
@@ -1420,14 +1670,30 @@ header {
   transition: all 0.18s ease;
 }
 
+.snapshot-color-card .snapshot-action-btn {
+  color: rgb(var(--snapshot-ink-rgb));
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.26);
+}
+
 .snapshot-action-btn:hover {
   transform: translateY(-1px);
   border-color: rgba(138, 173, 255, 0.34);
   background: rgba(138, 173, 255, 0.12);
 }
 
+.snapshot-color-card .snapshot-action-btn:hover {
+  background: rgba(255, 255, 255, 0.26);
+  border-color: rgba(255, 255, 255, 0.44);
+}
+
 .snapshot-action-danger {
   color: var(--accent-rose);
+}
+
+.snapshot-color-card .snapshot-action-danger {
+  color: rgb(var(--snapshot-ink-rgb));
+  background: rgba(0, 0, 0, 0.12);
 }
 
 .snapshots-empty {
