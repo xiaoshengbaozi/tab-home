@@ -13,6 +13,11 @@ const ICONS = {
   close:   `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>`,
   archive: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" /></svg>`,
   focus:   `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 19.5 15-15m0 0H8.25m11.25 0v11.25" /></svg>`,
+  previous:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M7.5 6.2a1 1 0 0 1 1.55-.84l6.8 4.8a1 1 0 0 1 0 1.68l-6.8 4.8a1 1 0 0 1-1.55-.84V6.2Z"/><path d="M5 5.75a1 1 0 0 1 2 0v10.5a1 1 0 1 1-2 0V5.75Z"/></svg>`,
+  next:    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 17.8a1 1 0 0 1-1.55.84l-6.8-4.8a1 1 0 0 1 0-1.68l6.8-4.8a1 1 0 0 1 1.55.84v9.6Z"/><path d="M17 7.75a1 1 0 0 1 2 0v10.5a1 1 0 1 1-2 0V7.75Z"/></svg>`,
+  volume:  `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 9.75H4.5A1.5 1.5 0 0 0 3 11.25v1.5a1.5 1.5 0 0 0 1.5 1.5h2.25L12 18.75v-13.5L6.75 9.75Zm9.75-.75a4.5 4.5 0 0 1 0 6m2.25-8.25a7.5 7.5 0 0 1 0 10.5" /></svg>`,
+  muted:   `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 9.75H4.5A1.5 1.5 0 0 0 3 11.25v1.5a1.5 1.5 0 0 0 1.5 1.5h2.25L12 18.75v-13.5L6.75 9.75Zm8.25.75 4.5 4.5m0-4.5-4.5 4.5" /></svg>`,
+  pin:     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>`,
 };
 
 
@@ -21,6 +26,56 @@ const ICONS = {
    ---------------------------------------------------------------- */
 let domainGroups       = [];   // regular open-tabs groups
 let pinnedDomainGroups = [];   // pinned-tabs groups (rendered above)
+
+function getMediaTabs(tabs) {
+  return (tabs || [])
+    .filter(tab => tab && tab.audible)
+    .sort((a, b) => {
+      const activeScore = Number(!!b.active) - Number(!!a.active);
+      if (activeScore !== 0) return activeScore;
+      return (b.lastAccessed || 0) - (a.lastAccessed || 0);
+    });
+}
+
+function renderMediaPanel(tabs) {
+  const panel = document.getElementById('mediaPanel');
+  if (!panel) return;
+
+  const mediaTabs = getMediaTabs(tabs);
+  if (mediaTabs.length === 0) {
+    panel.style.display = 'none';
+    panel.innerHTML = '';
+    return;
+  }
+
+  const tab = mediaTabs[0];
+  const label = cleanTitle(smartTitle(stripTitleNoise(tab.title || ''), tab.url), '');
+  let source = '';
+  try { source = friendlyDomain(new URL(tab.url).hostname); } catch { source = 'Media tab'; }
+  const safeTitle = escapeHtml(label || source);
+  const safeSource = escapeHtml(source);
+  const faviconUrl = getFaviconUrl(tab.url, 64);
+  const countBadge = mediaTabs.length > 1 ? `<span class="media-count">${mediaTabs.length}</span>` : '';
+
+  panel.innerHTML = `
+    <div class="media-controls" data-media-tab-id="${tab.id}">
+      <button class="media-btn" data-action="media-prev" title="Previous playing tab">${ICONS.previous}</button>
+      <button class="media-btn" data-action="media-focus" data-tab-id="${tab.id}" title="Open playing tab">${ICONS.focus}</button>
+      <button class="media-btn" data-action="media-next" title="Next playing tab">${ICONS.next}</button>
+      <button class="media-track" data-action="media-focus" data-tab-id="${tab.id}" title="${safeTitle}">
+        ${faviconUrl ? `<img class="media-art" src="${faviconUrl}" alt="" onerror="this.style.display='none'">` : '<span class="media-art media-art-fallback"></span>'}
+        <span class="media-copy">
+          <span class="media-title">${safeTitle}</span>
+          <span class="media-source">${safeSource}</span>
+        </span>
+        ${countBadge}
+      </button>
+      <button class="media-btn" data-action="media-toggle-mute" data-tab-id="${tab.id}" title="${tab.muted ? 'Unmute tab' : 'Mute tab'}">${tab.muted ? ICONS.muted : ICONS.volume}</button>
+      <button class="media-btn${tab.pinned ? ' active' : ''}" data-action="media-toggle-pin" data-tab-id="${tab.id}" title="${tab.pinned ? 'Unpin tab' : 'Pin tab'}">${ICONS.pin}</button>
+      <button class="media-btn media-close" data-action="media-close" data-tab-id="${tab.id}" title="Close playing tab">${ICONS.close}</button>
+    </div>`;
+  panel.style.display = 'block';
+}
 
 
 /* ----------------------------------------------------------------
@@ -314,8 +369,9 @@ async function renderStaticDashboard() {
           ? 'local-files'
           : new URL(tab.url).hostname;
         if (!hostname) continue;
-        if (!groupMap[hostname]) groupMap[hostname] = { domain: hostname, tabs: [] };
-        groupMap[hostname].tabs.push(tab);
+        const key = isLocalHostname(hostname) ? '__local__' : hostname;
+        if (!groupMap[key]) groupMap[key] = { domain: key, tabs: [] };
+        groupMap[key].tabs.push(tab);
       } catch { /* skip malformed */ }
     }
     if (landing.length > 0) {
@@ -349,6 +405,7 @@ async function renderStaticDashboard() {
   const regularRealTabs = realTabs.filter(t => !t.pinned);
   pinnedDomainGroups = groupTabsByDomain(pinnedRealTabs);
   domainGroups       = groupTabsByDomain(regularRealTabs);
+  renderMediaPanel(realTabs);
 
   // --- Render domain cards ---
   const openTabsSection       = document.getElementById('openTabsSection');
