@@ -132,6 +132,65 @@ document.addEventListener('click', async (e) => {
     return;
   }
 
+  if (action === 'media-prev' || action === 'media-next') {
+    const mediaTabs = getMediaTabs(getRealTabs());
+    if (mediaTabs.length === 0) return;
+    const panel = document.getElementById('mediaPanel');
+    const currentId = parseInt(panel?.querySelector('.media-controls')?.dataset.mediaTabId || '', 10);
+    const currentIndex = mediaTabs.findIndex(tab => tab.id === currentId);
+    const fallbackIndex = currentIndex === -1 ? 0 : currentIndex;
+    const nextIndex = action === 'media-next'
+      ? (fallbackIndex + 1) % mediaTabs.length
+      : (fallbackIndex - 1 + mediaTabs.length) % mediaTabs.length;
+    const tab = mediaTabs[nextIndex];
+    if (tab && tab.url) await focusTab(tab.url);
+    return;
+  }
+
+  if (action === 'media-focus') {
+    const tabId = parseInt(actionEl.dataset.tabId, 10);
+    if (Number.isNaN(tabId)) return;
+    try {
+      const tab = await chrome.tabs.get(tabId);
+      await chrome.tabs.update(tabId, { active: true });
+      await chrome.windows.update(tab.windowId, { focused: true });
+    } catch {}
+    return;
+  }
+
+  if (action === 'media-toggle-mute') {
+    const tabId = parseInt(actionEl.dataset.tabId, 10);
+    if (Number.isNaN(tabId)) return;
+    try {
+      const tab = await chrome.tabs.get(tabId);
+      await chrome.tabs.update(tabId, { muted: !(tab.mutedInfo && tab.mutedInfo.muted) });
+      await renderDashboard();
+    } catch {}
+    return;
+  }
+
+  if (action === 'media-toggle-pin') {
+    const tabId = parseInt(actionEl.dataset.tabId, 10);
+    if (Number.isNaN(tabId)) return;
+    try {
+      const tab = await chrome.tabs.get(tabId);
+      await chrome.tabs.update(tabId, { pinned: !tab.pinned });
+      await renderDashboard();
+    } catch {}
+    return;
+  }
+
+  if (action === 'media-close') {
+    const tabId = parseInt(actionEl.dataset.tabId, 10);
+    if (Number.isNaN(tabId)) return;
+    try { await chrome.tabs.remove(tabId); } catch {}
+    await fetchOpenTabs();
+    playCloseSound();
+    await renderDashboard();
+    showToast(t('tabClosed'));
+    return;
+  }
+
   if (action === 'run-command-palette-item') {
     const index = parseInt(actionEl.dataset.commandIndex, 10);
     await runCommandPaletteItem(Number.isNaN(index) ? 0 : index);

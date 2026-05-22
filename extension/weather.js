@@ -103,6 +103,60 @@ function getLocalTimezone() {
   }
 }
 
+function getPreferredPlaceName(reverseData) {
+  const address = reverseData && reverseData.address;
+  if (!address || typeof address !== 'object') return '';
+  const candidates = [
+    address.city,
+    address.town,
+    address.village,
+    address.municipality,
+    address.suburb,
+    address.county,
+    address.state_district,
+    address.state,
+    address.country,
+  ];
+  return String(candidates.find(Boolean) || '').trim();
+}
+
+async function fetchReverseGeocodeName(coords, lang) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 6500);
+  const params = new URLSearchParams({
+    format: 'jsonv2',
+    lat: Number(coords.latitude).toFixed(5),
+    lon: Number(coords.longitude).toFixed(5),
+    zoom: '10',
+    addressdetails: '1',
+    'accept-language': lang === 'zh' ? 'zh-CN,zh,en' : 'en',
+  });
+
+  try {
+    const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?${params.toString()}`, {
+      credentials: 'omit',
+      cache: 'force-cache',
+      referrerPolicy: 'no-referrer',
+      signal: controller.signal,
+    });
+    if (!resp.ok) return '';
+    return getPreferredPlaceName(await resp.json());
+  } catch {
+    return '';
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function getLocationNames(coords, fallbackCity) {
+  const en = await fetchReverseGeocodeName(coords, 'en');
+  const zh = await fetchReverseGeocodeName(coords, 'zh');
+  return {
+    en: en || fallbackCity || '',
+    zh: zh || en || fallbackCity || '',
+  };
+}
+
 async function fetchWeatherText() {
   if (!navigator.geolocation) return null;
 
@@ -110,7 +164,7 @@ async function fetchWeatherText() {
     navigator.geolocation.getCurrentPosition(
       (pos) => resolve(pos.coords),
       reject,
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: WEATHER_CACHE_MS }
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: WEATHER_CACHE_MS }
     );
   });
 
@@ -134,15 +188,17 @@ async function fetchWeatherText() {
 
   const temp = Math.round(current.temperature_2m);
   const isDay = Number(current.is_day) === 1;
-  const city = cityFromTimezone(getLocalTimezone()) || cityFromTimezone(data.timezone);
+  const fallbackCity = cityFromTimezone(data.timezone) || cityFromTimezone(getLocalTimezone());
+  const locationNames = await getLocationNames(coords, fallbackCity);
 
   const icon = getWeatherIconSvg(current.weather_code, isDay);
-  const cityHtml = city ? `<span class="weather-city">${escapeHtml(city)}</span>` : '';
+  const cityHtmlEn = locationNames.en ? `<span class="weather-city">${escapeHtml(locationNames.en)}</span>` : '';
+  const cityHtmlZh = locationNames.zh ? `<span class="weather-city">${escapeHtml(locationNames.zh)}</span>` : '';
   const detailEn = `${temp}°C ${getWeatherLabel(current.weather_code, isDay, 'en')}`;
   const detailZh = `${temp}°C ${getWeatherLabel(current.weather_code, isDay, 'zh')}`;
   return {
-    en: `<span class="weather-inline">${cityHtml}<span class="weather-icon">${icon}</span><span class="weather-detail">${escapeHtml(detailEn)}</span></span>`,
-    zh: `<span class="weather-inline">${cityHtml}<span class="weather-icon">${icon}</span><span class="weather-detail">${escapeHtml(detailZh)}</span></span>`,
+    en: `<span class="weather-inline">${cityHtmlEn}<span class="weather-icon">${icon}</span><span class="weather-detail">${escapeHtml(detailEn)}</span></span>`,
+    zh: `<span class="weather-inline">${cityHtmlZh}<span class="weather-icon">${icon}</span><span class="weather-detail">${escapeHtml(detailZh)}</span></span>`,
   };
 }
 

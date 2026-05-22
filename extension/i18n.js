@@ -24,6 +24,7 @@ const STRINGS = {
     rightNow: 'Right now', openTabs: 'Open tabs', pinned: 'Pinned',
     nTabsCount: (n) => `${n} tab${n !== 1 ? 's' : ''}`,
     homepages: 'Homepages',
+    local: 'Local',
     nDomains: (n) => `${n} domain${n !== 1 ? 's' : ''}`,
     nTabsOpen: (n) => `${n} tab${n !== 1 ? 's' : ''} open`,
     dupeBadge: (n) => `duplicate x ${n}`,
@@ -126,6 +127,7 @@ const STRINGS = {
     rightNow: '正在打开', openTabs: '当前标签', pinned: '已固定',
     nTabsCount: (n) => `${n} 个标签`,
     homepages: '主页',
+    local: '本地',
     nDomains: (n) => `${n} 个域名`,
     nTabsOpen: (n) => `已打开 ${n} 个`,
     dupeBadge: (n) => `重复 x ${n}`,
@@ -250,6 +252,7 @@ async function loadLang() {
   try {
     const { lang } = await chrome.storage.local.get('lang');
     if (lang === 'zh' || lang === 'en') currentLang = lang;
+    else if (navigator.language && navigator.language.toLowerCase().startsWith('zh')) currentLang = 'zh';
   } catch {}
 }
 

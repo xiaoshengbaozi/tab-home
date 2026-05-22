@@ -79,8 +79,31 @@ const FRIENDLY_DOMAINS = {
   'local-files':          'Local Files',
 };
 
+function isLocalHostname(hostname) {
+  const host = (hostname || '').replace(/^\[|\]$/g, '').toLowerCase();
+  if (!host) return false;
+  if (host === 'localhost' || host === '::1' || host === '0:0:0:0:0:0:0:1') return true;
+
+  const parts = host.split('.');
+  if (parts.length !== 4) return false;
+
+  const nums = parts.map(part => Number(part));
+  if (nums.some((n, i) => !/^\d+$/.test(parts[i]) || n < 0 || n > 255)) return false;
+
+  const [a, b] = nums;
+  return (
+    a === 10 ||
+    a === 127 ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 169 && b === 254) ||
+    (a === 0 && b === 0 && nums[2] === 0 && nums[3] === 0)
+  );
+}
+
 function friendlyDomain(hostname) {
   if (!hostname) return '';
+  if (hostname === '__local__' || isLocalHostname(hostname)) return t('local');
   if (FRIENDLY_DOMAINS[hostname]) return FRIENDLY_DOMAINS[hostname];
 
   if (hostname.endsWith('.substack.com') && hostname !== 'substack.com') {

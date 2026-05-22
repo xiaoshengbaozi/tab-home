@@ -24,7 +24,7 @@ if (chrome.tabs && chrome.tabs.onCreated) {
   chrome.tabs.onCreated.addListener(scheduleLiveRerender);
   chrome.tabs.onRemoved.addListener(scheduleLiveRerender);
   chrome.tabs.onUpdated.addListener((_id, changeInfo) => {
-    if (changeInfo.url || changeInfo.title || 'pinned' in changeInfo) {
+    if (changeInfo.url || changeInfo.title || 'pinned' in changeInfo || 'audible' in changeInfo || 'mutedInfo' in changeInfo) {
       scheduleLiveRerender();
     }
   });
@@ -56,18 +56,22 @@ if (chrome.storage && chrome.storage.onChanged) {
    INITIALIZE
    ---------------------------------------------------------------- */
 (async () => {
-  await loadLang();
-  await loadTheme();
-  await migrateAwayFromFolders();
-  applyStaticI18n();
   try {
-    const syncSession = await getSyncSession();
-    const syncSettings = await getSyncSettings();
-    if (syncSettings.enabled && syncSession.accessToken && syncSession.user && syncSession.user.id) {
-      await pullCloudDataFromSupabase();
+    await loadLang();
+    await loadTheme();
+    await migrateAwayFromFolders();
+    applyStaticI18n();
+    try {
+      const syncSession = await getSyncSession();
+      const syncSettings = await getSyncSettings();
+      if (syncSettings.enabled && syncSession.accessToken && syncSession.user && syncSession.user.id) {
+        await pullCloudDataFromSupabase();
+      }
+    } catch (err) {
+      console.warn('[wolfy] initial auto sync pull failed:', err);
     }
+    await renderDashboard();
   } catch (err) {
-    console.warn('[wolfy] initial auto sync pull failed:', err);
+    console.error('[wolfy] dashboard initialization failed:', err);
   }
-  await renderDashboard();
 })();
