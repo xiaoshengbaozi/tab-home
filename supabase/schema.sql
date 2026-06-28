@@ -13,6 +13,7 @@ create table if not exists public.user_settings (
   background_image_url text default '',
   background_brightness integer default 72,
   background_blur integer default 0,
+  favorites_tree jsonb not null default '[]'::jsonb,
   updated_at timestamptz not null default now()
 );
 

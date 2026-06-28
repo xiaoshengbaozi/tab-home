@@ -13,8 +13,12 @@ CREATE TABLE IF NOT EXISTS public.user_settings (
   background_image_url  TEXT NOT NULL DEFAULT '',
   background_brightness INTEGER NOT NULL DEFAULT 72,
   background_blur       INTEGER NOT NULL DEFAULT 0,
+  favorites_tree        JSONB NOT NULL DEFAULT '[]'::jsonb,
   updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE public.user_settings
+  ADD COLUMN IF NOT EXISTS favorites_tree JSONB NOT NULL DEFAULT '[]'::jsonb;
 
 CREATE TABLE IF NOT EXISTS public.social_links (
   user_id       UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,

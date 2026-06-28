@@ -87,6 +87,9 @@ function applyStaticI18n() {
   set('.favorites-form-cancel', 'cancel');
   set('#favoritesFormDelete', 'remove');
   set('#favoritesEmpty', 'favoritesEmpty');
+  set('#favoriteFolderRenameBtn', 'renameFolder');
+  set('#favoriteFolderCloseBtn', 'cancel');
+  set('#favoriteFolderEmpty', 'folderEmpty');
 
   // Open tabs section default title (overwritten by render when tabs exist)
   set('#openTabsSectionTitle', 'rightNow');
@@ -122,6 +125,8 @@ function applyStaticI18n() {
   set('#backgroundClearBtn', 'clear');
   set('#backgroundBrightnessLabel', 'brightness');
   set('#backgroundBlurLabel', 'blur');
+  set('#weatherEnabledLabel', 'weatherEnabled');
+  set('#autoDeleteEmptyFoldersLabel', 'autoDeleteEmptyFolders');
   const settingsFormSubmit = document.getElementById('settingsFormSubmit');
   if (settingsFormSubmit) settingsFormSubmit.textContent = t('save');
   void renderSyncStatus();

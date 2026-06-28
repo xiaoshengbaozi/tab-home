@@ -61,16 +61,19 @@ if (chrome.storage && chrome.storage.onChanged) {
     await loadTheme();
     await migrateAwayFromFolders();
     applyStaticI18n();
-    try {
-      const syncSession = await getSyncSession();
-      const syncSettings = await getSyncSettings();
-      if (syncSettings.enabled && syncSession.accessToken && syncSession.user && syncSession.user.id) {
-        await pullCloudDataFromSupabase();
-      }
-    } catch (err) {
-      console.warn('[wolfy] initial auto sync pull failed:', err);
-    }
     await renderDashboard();
+    setTimeout(async () => {
+      try {
+        const syncSession = await getSyncSession();
+        const syncSettings = await getSyncSettings();
+        if (syncSettings.enabled && syncSession.accessToken && syncSession.user && syncSession.user.id) {
+          await pullCloudDataFromSupabase();
+          await renderDashboard();
+        }
+      } catch (err) {
+        console.warn('[wolfy] initial auto sync pull failed:', err);
+      }
+    }, 0);
   } catch (err) {
     console.error('[wolfy] dashboard initialization failed:', err);
   }

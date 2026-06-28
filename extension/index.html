@@ -5,10 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>tab-home</title>
 
-  <!-- Google Fonts: DM Sans is the only typeface used across the page. -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -178,6 +174,23 @@
   </form>
 </div>
 
+<div class="favorites-modal favorite-folder-modal" id="favoriteFolderModal" style="display:none">
+  <div class="favorite-folder-card">
+    <div class="favorite-folder-head">
+      <div>
+        <div class="favorite-folder-title" id="favoriteFolderTitle" contenteditable="false" spellcheck="false">Folder</div>
+        <div class="favorite-folder-subtitle" id="favoriteFolderCount"></div>
+      </div>
+      <div class="favorite-folder-actions">
+        <button type="button" class="favorites-form-cancel" data-action="rename-favorite-folder" id="favoriteFolderRenameBtn">Rename</button>
+        <button type="button" class="favorites-form-cancel" data-action="close-favorite-folder" id="favoriteFolderCloseBtn">Close</button>
+      </div>
+    </div>
+    <div class="favorite-folder-grid" id="favoriteFolderGrid"></div>
+    <div class="favorites-empty favorite-folder-empty" id="favoriteFolderEmpty" style="display:none">This folder is empty.</div>
+  </div>
+</div>
+
 <!-- ================================================================
      CONFIRM DIALOG — generic in-page modal that replaces window.confirm()
      ================================================================ -->
@@ -301,6 +314,16 @@
 
         <label class="favorites-form-label" for="backgroundBlurInput" id="backgroundBlurLabel">Blur</label>
         <input type="range" class="settings-range-input" id="backgroundBlurInput" min="0" max="24" step="1" value="0">
+
+        <label class="settings-checkbox-row" for="weatherEnabledInput">
+          <input type="checkbox" id="weatherEnabledInput">
+          <span id="weatherEnabledLabel">Show local weather</span>
+        </label>
+
+        <label class="settings-checkbox-row" for="autoDeleteEmptyFoldersInput">
+          <input type="checkbox" id="autoDeleteEmptyFoldersInput" checked>
+          <span id="autoDeleteEmptyFoldersLabel">Auto-delete empty folders</span>
+        </label>
       </div>
 
       <div class="favorites-form-actions">

@@ -19,6 +19,18 @@ const STRINGS = {
     urlLabel: 'URL', titleLabel: 'Title',
     titlePlaceholder: 'Title (optional)',
     favoritesEmpty: 'Nothing pinned yet. Click + to add a URL, or star a tab on the right.',
+    folderDefaultName: 'Folder',
+    folderItemCount: (n) => `${n} item${n !== 1 ? 's' : ''}`,
+    folderEmpty: 'This folder is empty.',
+    renameFolder: 'Rename',
+    folderRenamed: 'Folder renamed',
+    folderRenamePlaceholder: 'Folder name',
+    deleteFolder: 'Delete folder',
+    confirmDeleteFolder: 'Delete this folder and all bookmarks inside?',
+    addedToFolder: 'Added to folder',
+    folderCreated: 'Folder created',
+    moveOutOfFolder: 'Move out',
+    movedOutOfFolder: 'Moved out of folder',
     addAFavorite: 'Add a favorite',
     edit: 'Edit', remove: 'Remove', moreActions: 'More',
     rightNow: 'Right now', openTabs: 'Open tabs', pinned: 'Pinned',
@@ -104,6 +116,7 @@ const STRINGS = {
     addedToFavorites: 'Added to favorites', removedFromFavorites: 'Removed from favorites',
     confirmRemoveFav: 'Remove this from favorites?',
     alreadyAdded: 'Already in favorites',
+    invalidUrl: 'Use an http, https, or file URL',
     saveFailed: 'Save failed (storage may be full)',
     favoriteUpdated: 'Favorite updated', tabClosed: 'Tab closed',
     allTabsClosed: 'All tabs closed. Fresh start.',
@@ -113,6 +126,8 @@ const STRINGS = {
     tabs: 'tabs',
     weatherUnknown: 'Weather unavailable',
     weatherLoading: 'Loading weather...',
+    weatherEnabled: 'Show local weather',
+    autoDeleteEmptyFolders: 'Auto-delete empty folders',
     langToggle: '中',
   },
   zh: {
@@ -122,6 +137,18 @@ const STRINGS = {
     urlLabel: '网址', titleLabel: '标题',
     titlePlaceholder: '标题（可选）',
     favoritesEmpty: '还没有收藏。点击 + 添加链接，或在右侧给标签页标星。',
+    folderDefaultName: '文件夹',
+    folderItemCount: (n) => `${n} 个项目`,
+    folderEmpty: '这个文件夹是空的。',
+    renameFolder: '重命名',
+    folderRenamed: '文件夹已重命名',
+    folderRenamePlaceholder: '文件夹名称',
+    deleteFolder: '删除文件夹',
+    confirmDeleteFolder: '删除这个文件夹和里面的所有书签？',
+    addedToFolder: '已加入文件夹',
+    folderCreated: '文件夹已创建',
+    moveOutOfFolder: '移出',
+    movedOutOfFolder: '已移出文件夹',
     addAFavorite: '添加收藏',
     edit: '编辑', remove: '删除', moreActions: '更多',
     rightNow: '正在打开', openTabs: '当前标签', pinned: '已固定',
@@ -207,6 +234,7 @@ const STRINGS = {
     addedToFavorites: '已加入收藏', removedFromFavorites: '已从收藏移除',
     confirmRemoveFav: '确定要取消收藏此网址吗？',
     alreadyAdded: '已经收藏过了',
+    invalidUrl: '请输入 http、https 或 file 链接',
     saveFailed: '保存失败（存储可能已满）',
     favoriteUpdated: '收藏已更新', tabClosed: '标签已关闭',
     allTabsClosed: '所有标签已关闭。重新开始。',
@@ -216,6 +244,8 @@ const STRINGS = {
     tabs: '个',
     weatherUnknown: '天气不可用',
     weatherLoading: '天气加载中...',
+    weatherEnabled: '显示本地天气',
+    autoDeleteEmptyFolders: '自动删除空文件夹',
     langToggle: 'EN',
   },
 };
@@ -246,6 +276,23 @@ function escapeHtml(value) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+function escapeAttr(value) {
+  return escapeHtml(value);
+}
+
+function normalizeHttpUrl(raw, { allowFile = false } = {}) {
+  const text = String(raw || '').trim();
+  if (!text) return '';
+  const candidate = /^[a-z][a-z0-9+.-]*:/i.test(text) ? text : `https://${text}`;
+  try {
+    const parsed = new URL(candidate);
+    const protocol = parsed.protocol.toLowerCase();
+    if (protocol === 'http:' || protocol === 'https:') return parsed.href;
+    if (allowFile && protocol === 'file:') return parsed.href;
+  } catch {}
+  return '';
 }
 
 async function loadLang() {
@@ -282,10 +329,7 @@ function getCommandIcon() {
 }
 
 function normalizeSocialUrl(raw) {
-  const text = String(raw || '').trim();
-  if (!text) return '';
-  if (/^https?:\/\//i.test(text)) return text;
-  return `https://${text}`;
+  return normalizeHttpUrl(raw);
 }
 
 function socialIcon(name) {

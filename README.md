@@ -4,14 +4,14 @@
 
 tab-home 是一个 Chrome 浏览器扩展，把默认的「新标签页」替换成一个干净的个人仪表板：左侧是长期收藏的网址，右侧是当前打开的所有标签（按域名分组）。
 
-完全本地运行——无服务器、无账号、不联网上传任何数据。Fork 自 [tab-out](https://github.com/zarazhangrui/tab-out) by [Zara](https://x.com/zarazhangrui)。
+核心功能完全本地运行：收藏、标签分组、快照和设置都存放在 `chrome.storage.local`。可选功能包括 Supabase 云同步和本地天气；只有你主动配置或开启时才会联网。Fork 自 [tab-out](https://github.com/zarazhangrui/tab-out) by [Zara](https://x.com/zarazhangrui)。
 
 ---
 
 ## 主要功能
 
 ### 收藏区（左半屏）
-- **9×9 网格**，最多收藏 81 个网址
+- **无限收藏网格**，超出视口后在收藏列内滚动
 - 鼠标悬停 → 右上角出现 ⋯ 菜单，可编辑或删除
 - 自动抓取网站 logo（优先 `apple-touch-icon.png`，兜底 Chrome 缓存的 favicon）
 - **二进制缓存**：图标加载成功后转 base64 存进 `chrome.storage.local`，之后刷新页面零网络请求
@@ -97,7 +97,7 @@ git clone https://github.com/wolfyxbt/tab-home.git
 | 图标缓存 | base64 二进制 + 全局图片错误回退链 |
 | 音效 | Web Audio API（合成，无音频文件）|
 | 动效 | CSS transitions + JS 撒花粒子 |
-| 字体 | DM Sans |
+| 字体 | 系统字体栈（无远程字体请求） |
 | 多语言 | 自研 i18n 字符串表 |
 
 零依赖，零 npm，零构建。clone 完直接 load。

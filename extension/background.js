@@ -101,6 +101,17 @@ function brandFromUrl(url) {
   } catch { return url; }
 }
 
+function normalizeFavoriteUrl(raw) {
+  const text = String(raw || '').trim();
+  if (!text) return '';
+  try {
+    const parsed = new URL(text);
+    const protocol = parsed.protocol.toLowerCase();
+    if (protocol === 'http:' || protocol === 'https:' || protocol === 'file:') return parsed.href;
+  } catch {}
+  return '';
+}
+
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   let url;
   if (info.menuItemId === 'wolfy-favorite-page') {
@@ -111,26 +122,24 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     return;
   }
 
+  url = normalizeFavoriteUrl(url);
   if (!url) return;
   const title = brandFromUrl(url);
-  // Skip browser-internal pages
-  if (url.startsWith('chrome://') ||
-      url.startsWith('chrome-extension://') ||
-      url.startsWith('about:') ||
-      url.startsWith('edge://') ||
-      url.startsWith('brave://')) {
-    return;
-  }
 
   try {
     const { favorites = [] } = await chrome.storage.local.get('favorites');
-    if (favorites.some(f => f.url === url)) return;
+    const existing = favorites.some(f =>
+      f.url === url ||
+      (f.type === 'folder' && Array.isArray(f.items) && f.items.some(item => item && item.url === url))
+    );
+    if (existing) return;
     // Place at the first free slot — no upper bound.
     const taken = new Set(favorites.map(f => f.slot));
     let slot = 0;
     while (taken.has(slot)) slot++;
     favorites.push({
       id:      Date.now().toString(),
+      type:    'favorite',
       url,
       title:   title || url,
       addedAt: new Date().toISOString(),

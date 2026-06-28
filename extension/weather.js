@@ -203,6 +203,13 @@ async function fetchWeatherText() {
 }
 
 async function ensureWeatherLoaded() {
+  const { weatherEnabled = false } = await chrome.storage.local.get('weatherEnabled');
+  if (!weatherEnabled) {
+    currentWeatherHtml = '';
+    updateHeaderDateDisplay();
+    return;
+  }
+
   const now = Date.now();
   const cached = weatherCache.displayByLang[currentLang];
   if (cached && (now - weatherCache.fetchedAt) < WEATHER_CACHE_MS) {

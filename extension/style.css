@@ -124,7 +124,7 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   overflow-y: auto;
-  font-family: 'DM Sans', sans-serif;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: var(--ink);
   background: var(--page-bg);
   -webkit-font-smoothing: antialiased;
@@ -395,7 +395,7 @@ header {
 .tab-cleanup-btn {
   height: 24px;
   padding: 0 10px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 10px;
   font-weight: 700;
   color: #f7fbff;
@@ -460,7 +460,7 @@ header {
 
 .media-btn,
 .media-track {
-  font-family: 'DM Sans', sans-serif;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: inherit;
   border: 0;
   cursor: pointer;
@@ -631,7 +631,7 @@ header {
   align-items: center;
   height: 26px;
   padding: 0 12px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 11px;
   font-weight: 700;
   color: var(--ink);
@@ -1483,7 +1483,7 @@ header {
   align-items: center;
   gap: 5px;
   padding: 8px 14px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 11px;
   font-weight: 700;
   color: var(--ink);
@@ -1589,7 +1589,7 @@ header {
 }
 
 .snapshots-form {
-  width: min(100%, 620px);
+  width: min(100%, 860px);
   max-height: min(78vh, 720px);
 }
 
@@ -1650,7 +1650,7 @@ header {
   background: transparent;
   border: none;
   outline: none;
-  font-family: 'DM Sans', sans-serif;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 15px;
   font-weight: 650;
 }
@@ -1770,7 +1770,7 @@ header {
 .favorites-form-cancel,
 .favorites-form-delete {
   padding: 8px 14px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 11px;
   font-weight: 700;
   border-radius: 999px;
@@ -1817,7 +1817,7 @@ header {
 .favorites-form-input {
   width: 100%;
   padding: 10px 12px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 12px;
   color: var(--ink);
   background: var(--surface-base);
@@ -1863,6 +1863,20 @@ header {
   cursor: pointer;
 }
 
+.settings-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.settings-checkbox-row input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
 .settings-transfer {
   display: flex;
   align-items: stretch;
@@ -1898,9 +1912,10 @@ header {
 }
 
 .snapshots-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  min-height: 0;
   overflow-y: auto;
   padding-right: 2px;
 }
@@ -1912,6 +1927,7 @@ header {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
   padding: 14px;
   border: 1px solid var(--warm-gray);
   border-radius: 18px;
@@ -2026,12 +2042,13 @@ header {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 0 0 auto;
 }
 
 .snapshot-action-btn {
   min-height: 32px;
   padding: 0 12px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -2274,6 +2291,10 @@ header {
     align-items: stretch;
   }
 
+  .snapshots-list {
+    grid-template-columns: 1fr;
+  }
+
   .command-result {
     grid-template-columns: 1fr;
     gap: 8px;
@@ -2326,7 +2347,7 @@ header {
 .favorites-logo-upload,
 .favorites-logo-reset {
   padding: 7px 10px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
@@ -2428,6 +2449,226 @@ header {
   height: 14px;
 }
 
+.favorite-folder-item {
+  border: 0;
+  font: inherit;
+}
+
+.favorite-folder-preview {
+  width: 62%;
+  aspect-ratio: 1 / 1;
+  display: grid;
+  gap: 4px;
+  padding: 7px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06));
+  border: 1px solid var(--border-faint);
+  box-shadow: inset 0 1px 0 var(--glass-highlight), 0 14px 28px -22px var(--elevation-shadow);
+}
+
+.favorite-folder-preview-compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.favorite-folder-preview-dense {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.favorite-folder-preview-icon {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  overflow: hidden;
+  background: var(--surface-base);
+}
+
+.favorite-folder-preview-icon .favorite-favicon {
+  width: 100%;
+  height: 100%;
+  border-radius: 7px;
+  box-shadow: none;
+  object-fit: contain;
+}
+
+.favorite-folder-preview-fallback,
+.folder-favorite-fallback {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--ink);
+  background: var(--hover-bg);
+}
+
+.favorite-folder-preview-empty {
+  opacity: 0.28;
+}
+
+.favorite-folder-count {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  min-width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--ink);
+  background: var(--surface-raised);
+}
+
+.favorite-folder-modal {
+  backdrop-filter: blur(14px);
+}
+
+.favorite-folder-card {
+  width: min(92vw, 560px);
+  max-height: min(78vh, 680px);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid var(--warm-gray);
+  border-radius: 28px;
+  background: var(--card-bg-strong);
+  box-shadow: 0 28px 80px -44px var(--elevation-shadow);
+  opacity: 0;
+  transform: scale(0.92) translateY(12px);
+  transition: opacity 0.16s ease, transform 0.18s cubic-bezier(.2,.9,.2,1);
+}
+
+.favorite-folder-modal.open .favorite-folder-card {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+.favorite-folder-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.favorite-folder-title {
+  min-width: 90px;
+  max-width: 320px;
+  border-radius: 10px;
+  outline: none;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.favorite-folder-title[data-editing="1"] {
+  padding: 2px 8px;
+  background: var(--surface-raised);
+  box-shadow: 0 0 0 3px rgba(138, 173, 255, 0.14);
+}
+
+.favorite-folder-subtitle {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.favorite-folder-actions {
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.favorite-folder-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+  gap: 12px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.folder-favorite-item {
+  position: relative;
+  min-width: 0;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 8px;
+  border-radius: 20px;
+  text-decoration: none;
+  color: inherit;
+  background: var(--surface-base);
+  border: 1px solid var(--border-faint);
+}
+
+.folder-favorite-item.dragging {
+  opacity: 0.38;
+}
+
+.folder-favorite-item.drop-target,
+.favorites-list.drop-target {
+  outline: 2px solid rgba(138, 173, 255, 0.5);
+  outline-offset: 3px;
+}
+
+.folder-favorite-item .favorite-favicon,
+.folder-favorite-fallback {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  object-fit: contain;
+}
+
+.folder-favorite-title {
+  width: 100%;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+
+.folder-favorite-remove {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 22px;
+  height: 22px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  color: var(--ink);
+  background: var(--surface-raised);
+  cursor: pointer;
+}
+
+.folder-favorite-item:hover .folder-favorite-remove {
+  display: inline-flex;
+}
+
+.folder-favorite-remove svg {
+  width: 13px;
+  height: 13px;
+}
+
+.favorite-folder-empty {
+  padding: 30px 0;
+  text-align: center;
+}
+
 .favorite-popup-menu {
   position: fixed;
   z-index: 1100;
@@ -2443,7 +2684,7 @@ header {
 
 .favorite-popup-item {
   padding: 7px 12px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 12px;
   color: var(--ink);
   text-align: left;
@@ -2614,7 +2855,7 @@ footer {
 }
 
 .footer-socials-edit {
-  font-family: 'DM Sans', sans-serif;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   cursor: pointer;
 }
 

@@ -53,8 +53,9 @@ function renderMediaPanel(tabs) {
   let source = '';
   try { source = friendlyDomain(new URL(tab.url).hostname); } catch { source = 'Media tab'; }
   const safeTitle = escapeHtml(label || source);
+  const safeTitleAttr = escapeAttr(label || source);
   const safeSource = escapeHtml(source);
-  const faviconUrl = getFaviconUrl(tab.url, 64);
+  const faviconUrl = escapeAttr(getFaviconUrl(tab.url, 64));
   const countBadge = mediaTabs.length > 1 ? `<span class="media-count">${mediaTabs.length}</span>` : '';
 
   panel.innerHTML = `
@@ -62,7 +63,7 @@ function renderMediaPanel(tabs) {
       <button class="media-btn" data-action="media-prev" title="Previous playing tab">${ICONS.previous}</button>
       <button class="media-btn" data-action="media-focus" data-tab-id="${tab.id}" title="Open playing tab">${ICONS.focus}</button>
       <button class="media-btn" data-action="media-next" title="Next playing tab">${ICONS.next}</button>
-      <button class="media-track" data-action="media-focus" data-tab-id="${tab.id}" title="${safeTitle}">
+      <button class="media-track" data-action="media-focus" data-tab-id="${tab.id}" title="${safeTitleAttr}">
         ${faviconUrl ? `<img class="media-art" src="${faviconUrl}" alt="" onerror="this.style.display='none'">` : '<span class="media-art media-art-fallback"></span>'}
         <span class="media-copy">
           <span class="media-title">${safeTitle}</span>
@@ -86,26 +87,28 @@ function buildOverflowChips(hiddenTabs, urlCounts = {}, favoritedUrls = new Set(
   const hiddenChips = hiddenTabs.map(tab => {
     const label     = cleanTitle(smartTitle(stripTitleNoise(tab.title || ''), tab.url), '');
     const count     = urlCounts[tab.url] || 1;
-    const safeUrl   = (tab.url || '').replace(/"/g, '&quot;');
-    const safeTitle = label.replace(/"/g, '&quot;');
+    const safeLabel = escapeHtml(label);
+    const safeUrl   = escapeAttr(tab.url || '');
+    const safeTitle = escapeAttr(label);
     const dupeTag   = count > 1
       ? ` <button class="chip-dupe-badge" data-action="dedup-this-url" data-tab-url="${safeUrl}" title="${t('closeDupes')}"><span class="dupe-count">${t('dupeBadge', count)}</span><span class="dupe-action">${t('closeDupes')}</span></button>`
       : '';
     const chipClass = count > 1 ? ' chip-has-dupes' : '';
     const isFav     = favoritedUrls.has(tab.url);
     const isPinned  = !!tab.pinned;
-    const faviconUrl = getFaviconUrl(tab.url, 32);
-    return `<div class="page-chip clickable${chipClass}" data-action="focus-tab" data-tab-url="${safeUrl}" data-tab-id="${tab.id}" title="${safeTitle}">
+    const faviconUrl = escapeAttr(getFaviconUrl(tab.url, 32));
+    const safeTabId = escapeAttr(tab.id);
+    return `<div class="page-chip clickable${chipClass}" data-action="focus-tab" data-tab-url="${safeUrl}" data-tab-id="${safeTabId}" title="${safeTitle}">
       ${faviconUrl ? `<img class="chip-favicon" src="${faviconUrl}" alt="" onerror="this.style.display='none'">` : ''}
-      <span class="chip-text">${label}</span>${dupeTag}
+      <span class="chip-text">${safeLabel}</span>${dupeTag}
       <div class="chip-actions">
         <button class="chip-action chip-star${isFav ? ' active' : ''}" data-action="favorite-tab" data-tab-url="${safeUrl}" data-tab-title="${safeTitle}" title="${isFav ? t('removeFromFav') : t('addToFav')}">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" /></svg>
         </button>
-        <button class="chip-action chip-pin${isPinned ? ' active' : ''}" data-action="pin-tab" data-tab-url="${safeUrl}" data-tab-id="${tab.id}" title="${isPinned ? t('unpinTip') : t('pinTip')}">
+        <button class="chip-action chip-pin${isPinned ? ' active' : ''}" data-action="pin-tab" data-tab-url="${safeUrl}" data-tab-id="${safeTabId}" title="${isPinned ? t('unpinTip') : t('pinTip')}">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>
         </button>
-        <button class="chip-action chip-close" data-action="close-single-tab" data-tab-url="${safeUrl}" data-tab-id="${tab.id}" title="${t('closeThisTab')}">
+        <button class="chip-action chip-close" data-action="close-single-tab" data-tab-url="${safeUrl}" data-tab-id="${safeTabId}" title="${t('closeThisTab')}">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
         </button>
       </div>
@@ -162,26 +165,28 @@ function renderDomainCard(group, favoritedUrls = new Set()) {
       if (parsed.hostname === 'localhost' && parsed.port) label = `${parsed.port} ${label}`;
     } catch {}
     const count     = urlCounts[tab.url];
-    const safeUrl   = (tab.url || '').replace(/"/g, '&quot;');
-    const safeTitle = label.replace(/"/g, '&quot;');
+    const safeLabel = escapeHtml(label);
+    const safeUrl   = escapeAttr(tab.url || '');
+    const safeTitle = escapeAttr(label);
     const dupeTag   = count > 1
       ? ` <button class="chip-dupe-badge" data-action="dedup-this-url" data-tab-url="${safeUrl}" title="${t('closeDupes')}"><span class="dupe-count">${t('dupeBadge', count)}</span><span class="dupe-action">${t('closeDupes')}</span></button>`
       : '';
     const chipClass = count > 1 ? ' chip-has-dupes' : '';
     const isFav     = favoritedUrls.has(tab.url);
     const isPinned  = !!tab.pinned;
-    const faviconUrl = getFaviconUrl(tab.url, 32);
-    return `<div class="page-chip clickable${chipClass}" data-action="focus-tab" data-tab-url="${safeUrl}" data-tab-id="${tab.id}" title="${safeTitle}">
+    const faviconUrl = escapeAttr(getFaviconUrl(tab.url, 32));
+    const safeTabId = escapeAttr(tab.id);
+    return `<div class="page-chip clickable${chipClass}" data-action="focus-tab" data-tab-url="${safeUrl}" data-tab-id="${safeTabId}" title="${safeTitle}">
       ${faviconUrl ? `<img class="chip-favicon" src="${faviconUrl}" alt="" onerror="this.style.display='none'">` : ''}
-      <span class="chip-text">${label}</span>${dupeTag}
+      <span class="chip-text">${safeLabel}</span>${dupeTag}
       <div class="chip-actions">
         <button class="chip-action chip-star${isFav ? ' active' : ''}" data-action="favorite-tab" data-tab-url="${safeUrl}" data-tab-title="${safeTitle}" title="${isFav ? t('removeFromFav') : t('addToFav')}">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" /></svg>
         </button>
-        <button class="chip-action chip-pin${isPinned ? ' active' : ''}" data-action="pin-tab" data-tab-url="${safeUrl}" data-tab-id="${tab.id}" title="${isPinned ? t('unpinTip') : t('pinTip')}">
+        <button class="chip-action chip-pin${isPinned ? ' active' : ''}" data-action="pin-tab" data-tab-url="${safeUrl}" data-tab-id="${safeTabId}" title="${isPinned ? t('unpinTip') : t('pinTip')}">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>
         </button>
-        <button class="chip-action chip-close" data-action="close-single-tab" data-tab-url="${safeUrl}" data-tab-id="${tab.id}" title="${t('closeThisTab')}">
+        <button class="chip-action chip-close" data-action="close-single-tab" data-tab-url="${safeUrl}" data-tab-id="${safeTabId}" title="${t('closeThisTab')}">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
         </button>
       </div>
@@ -205,7 +210,7 @@ function renderDomainCard(group, favoritedUrls = new Set()) {
       <div class="status-bar"></div>
       <div class="mission-content">
         <div class="mission-top">
-          <span class="mission-name">${isLanding ? t('homepages') : (group.label || friendlyDomain(group.domain))}</span>
+          <span class="mission-name">${escapeHtml(isLanding ? t('homepages') : (group.label || friendlyDomain(group.domain)))}</span>
           ${tabBadge}
           ${closeAllBtn}
         </div>
@@ -247,34 +252,97 @@ async function renderFavoritesColumn() {
 }
 
 function renderFavoriteItem(fav) {
-  const safeUrl   = (fav.url || '').replace(/"/g, '&quot;');
-  const safeTitle = (fav.title || fav.url || '').replace(/"/g, '&quot;');
+  if (fav.type === 'folder') return renderFavoriteFolder(fav);
+
+  const safeUrl   = escapeAttr(fav.url || '');
+  const safeTitle = escapeHtml(fav.title || fav.url || '');
+  const safeTitleAttr = escapeAttr(fav.url || '');
 
   let imgHtml = '';
   if (fav.customLogo) {
-    imgHtml = `<img class="favorite-favicon" src="${fav.customLogo}" alt="">`;
+    imgHtml = `<img class="favorite-favicon" src="${escapeAttr(fav.customLogo)}" alt="">`;
   } else if (fav.iconUrl) {
-    const safe       = fav.iconUrl.replace(/"/g, '&quot;');
+    const safe       = escapeAttr(fav.iconUrl);
     const isBinary   = fav.iconUrl.startsWith('data:');
     const resolved   = isBinary ? 'data-resolved="1"' : '';
-    imgHtml = `<img class="favorite-favicon" src="${safe}" data-fav-id="${fav.id}" ${resolved} alt="">`;
+    imgHtml = `<img class="favorite-favicon" src="${safe}" data-fav-id="${escapeAttr(fav.id)}" ${resolved} alt="">`;
   } else {
     const chain = getFaviconFallbackChain(fav.url, 128);
     if (chain.length > 0) {
-      const primary  = chain[0].replace(/"/g, '&quot;');
-      const fallback = chain.slice(1).join('|').replace(/"/g, '&quot;');
-      imgHtml = `<img class="favorite-favicon" src="${primary}" data-fallback="${fallback}" data-fav-id="${fav.id}" alt="">`;
+      const primary  = escapeAttr(chain[0]);
+      const fallback = escapeAttr(chain.slice(1).join('|'));
+      imgHtml = `<img class="favorite-favicon" src="${primary}" data-fallback="${fallback}" data-fav-id="${escapeAttr(fav.id)}" alt="">`;
     }
   }
 
   return `
-    <a class="favorite-item" href="${safeUrl}" target="_blank" rel="noopener noreferrer" draggable="true" data-fav-id="${fav.id}" title="${safeUrl}">
+    <a class="favorite-item" href="${safeUrl}" target="_blank" rel="noopener noreferrer" draggable="true" data-fav-id="${escapeAttr(fav.id)}" data-item-type="favorite" title="${safeTitleAttr}">
       ${imgHtml}
       <span class="favorite-title">${safeTitle}</span>
-      <button class="favorite-menu" data-action="favorite-menu" data-fav-id="${fav.id}" title="${t('moreActions')}">
+      <button class="favorite-menu" data-action="favorite-menu" data-fav-id="${escapeAttr(fav.id)}" title="${t('moreActions')}">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
       </button>
     </a>`;
+}
+
+function renderFavoriteIcon(fav, size = 128) {
+  if (!fav) return '';
+  if (fav.customLogo) {
+    return `<img class="favorite-favicon" src="${escapeAttr(fav.customLogo)}" alt="">`;
+  }
+  if (fav.iconUrl) {
+    const safe = escapeAttr(fav.iconUrl);
+    const resolved = fav.iconUrl.startsWith('data:') ? 'data-resolved="1"' : '';
+    return `<img class="favorite-favicon" src="${safe}" data-fav-id="${escapeAttr(fav.id)}" ${resolved} alt="">`;
+  }
+  const chain = getFaviconFallbackChain(fav.url, size);
+  if (chain.length === 0) return '';
+  return `<img class="favorite-favicon" src="${escapeAttr(chain[0])}" data-fallback="${escapeAttr(chain.slice(1).join('|'))}" data-fav-id="${escapeAttr(fav.id)}" alt="">`;
+}
+
+function renderFavoriteFolder(folder) {
+  const items = Array.isArray(folder.items) ? folder.items : [];
+  const previewClass = items.length <= 4 ? ' favorite-folder-preview-compact' : ' favorite-folder-preview-dense';
+  const previewItems = items.slice(0, 9).map(item => `
+    <span class="favorite-folder-preview-icon">
+      ${renderFavoriteIcon(item, 64) || `<span class="favorite-folder-preview-fallback">${escapeHtml((item.title || item.url || '?').charAt(0).toUpperCase())}</span>`}
+    </span>
+  `).join('');
+  const placeholders = Array.from({ length: Math.max(0, Math.min(9, 4) - items.length) })
+    .map(() => '<span class="favorite-folder-preview-icon favorite-folder-preview-empty"></span>')
+    .join('');
+  return `
+    <div class="favorite-item favorite-folder-item" role="button" tabindex="0" draggable="true" data-action="open-favorite-folder" data-fav-id="${escapeAttr(folder.id)}" data-item-type="folder" title="${escapeAttr(folder.title || t('folderDefaultName'))}">
+      <span class="favorite-folder-preview${previewClass}">${previewItems}${placeholders}</span>
+      <span class="favorite-title">${escapeHtml(folder.title || t('folderDefaultName'))}</span>
+      <span class="favorite-folder-count">${items.length}</span>
+      <button class="favorite-menu" data-action="favorite-menu" data-fav-id="${escapeAttr(folder.id)}" title="${t('moreActions')}">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+      </button>
+    </div>`;
+}
+
+async function renderFavoriteFolderModal(folderId) {
+  const modal = document.getElementById('favoriteFolderModal');
+  const titleEl = document.getElementById('favoriteFolderTitle');
+  const countEl = document.getElementById('favoriteFolderCount');
+  const gridEl = document.getElementById('favoriteFolderGrid');
+  const emptyEl = document.getElementById('favoriteFolderEmpty');
+  if (!modal || !titleEl || !gridEl || !emptyEl) return;
+  const folder = await getFolder(folderId);
+  if (!folder) return;
+  modal.dataset.folderId = folder.id;
+  titleEl.textContent = folder.title || t('folderDefaultName');
+  if (countEl) countEl.textContent = t('folderItemCount', (folder.items || []).length);
+  const items = Array.isArray(folder.items) ? folder.items : [];
+  emptyEl.style.display = items.length === 0 ? 'block' : 'none';
+  gridEl.innerHTML = items.map(item => `
+    <div class="folder-favorite-item" role="link" tabindex="0" draggable="true" data-action="open-folder-favorite" data-folder-id="${escapeAttr(folder.id)}" data-fav-id="${escapeAttr(item.id)}" data-url="${escapeAttr(item.url)}" title="${escapeAttr(item.url)}">
+      ${renderFavoriteIcon(item, 96) || `<span class="folder-favorite-fallback">${escapeHtml((item.title || item.url || '?').charAt(0).toUpperCase())}</span>`}
+      <span class="folder-favorite-title">${escapeHtml(item.title || item.url)}</span>
+      <button class="folder-favorite-remove" type="button" data-action="move-favorite-out-folder" data-folder-id="${escapeAttr(folder.id)}" data-fav-id="${escapeAttr(item.id)}" title="${t('moveOutOfFolder')}">${ICONS.close}</button>
+    </div>
+  `).join('');
 }
 
 
@@ -419,7 +487,7 @@ async function renderStaticDashboard() {
   const pinnedSectionCount    = document.getElementById('pinnedSectionCount');
   const pinnedSectionTitle    = document.getElementById('pinnedSectionTitle');
 
-  const favoritedUrls = new Set((await getFavorites()).map(f => f.url));
+  const favoritedUrls = new Set(getFlatFavorites(await getFavorites()).map(f => f.url));
 
   // Pinned sub-section
   if (pinnedSubSection) {

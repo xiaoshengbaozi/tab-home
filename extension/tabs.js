@@ -91,6 +91,15 @@ async function closeTabsExact(urls) {
   await fetchOpenTabs();
 }
 
+async function closeTabsByIds(tabIds) {
+  const ids = (tabIds || [])
+    .map(id => Number(id))
+    .filter(id => Number.isInteger(id));
+  if (ids.length === 0) return;
+  await chrome.tabs.remove(Array.from(new Set(ids)));
+  await fetchOpenTabs();
+}
+
 /**
  * focusTab(url)
  *

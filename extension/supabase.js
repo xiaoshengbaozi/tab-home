@@ -268,6 +268,20 @@ function compactFavoriteSlots(favorites) {
   }));
 }
 
+function compactMixedFavoriteSlots(items) {
+  return (items || [])
+    .filter(Boolean)
+    .sort((a, b) => {
+      const slotDiff = (a.slot ?? 0) - (b.slot ?? 0);
+      if (slotDiff !== 0) return slotDiff;
+      return timeValue(a.addedAt) - timeValue(b.addedAt);
+    })
+    .map((item, index) => ({
+      ...item,
+      slot: index,
+    }));
+}
+
 function mergeFavorites(localFavorites, cloudFavorites) {
   const byUrl = new Map();
   for (const [index, fav] of localFavorites.entries()) {
@@ -296,6 +310,46 @@ function mergeFavorites(localFavorites, cloudFavorites) {
   }
 
   return compactFavoriteSlots(Array.from(byUrl.values()));
+}
+
+function itemUpdatedTime(item) {
+  return timeValue(item && (item.updatedAt || item.updated_at || item.addedAt || item.created_at));
+}
+
+function mergeFavoriteTrees(localTree, cloudTree) {
+  const local = normalizeFavoriteTree(localTree);
+  const cloud = normalizeFavoriteTree(cloudTree);
+  const byFolderId = new Map();
+  const topByUrl = new Map();
+  const seenUrls = new Set();
+
+  function addItem(item, preferNewer = true) {
+    if (!item) return;
+    if (item.type === 'folder') {
+      const existing = byFolderId.get(item.id);
+      if (!existing || !preferNewer || itemUpdatedTime(item) >= itemUpdatedTime(existing)) {
+        byFolderId.set(item.id, item);
+      }
+      for (const fav of item.items || []) {
+        if (fav && fav.url) seenUrls.add(fav.url);
+      }
+      return;
+    }
+
+    if (!item.url || seenUrls.has(item.url)) return;
+    const existing = topByUrl.get(item.url);
+    if (!existing || !preferNewer || itemUpdatedTime(item) >= itemUpdatedTime(existing)) {
+      topByUrl.set(item.url, item);
+    }
+  }
+
+  for (const item of local) addItem(item, false);
+  for (const item of cloud) addItem(item, true);
+
+  const folders = Array.from(byFolderId.values());
+  const folderUrls = new Set(folders.flatMap(folder => (folder.items || []).map(item => item.url).filter(Boolean)));
+  const topFavorites = Array.from(topByUrl.values()).filter(item => !folderUrls.has(item.url));
+  return compactMixedFavoriteSlots([...folders, ...topFavorites]);
 }
 
 function normalizeLocalWorkspaceSnapshot(snapshot) {
@@ -405,26 +459,42 @@ async function pushLocalDataToSupabase() {
   ]);
   const { theme = 'light', lang = 'en' } = await chrome.storage.local.get(['theme', 'lang']);
   const now = toIsoNow();
+  const syncableFavorites = favorites.filter((fav) => fav && fav.type !== 'folder' && fav.url);
   const normalizedFavorites = compactFavoriteSlots(
-    favorites.map((fav, index) => normalizeLocalFavorite(fav, index))
+    syncableFavorites.map((fav, index) => normalizeLocalFavorite(fav, index))
   );
   const normalizedSnapshots = workspaceSnapshots.map(normalizeLocalWorkspaceSnapshot);
 
-  await supabaseRestRequest(`/user_settings?user_id=eq.${encodeURIComponent(userId)}`, {
+  const settingsBody = {
+    user_id: userId,
+    theme,
+    lang,
+    background_image_url: backgroundSettings.imageUrl || backgroundSettings.imageDataUrl || '',
+    background_brightness: backgroundSettings.brightness ?? DEFAULT_BACKGROUND_SETTINGS.brightness,
+    background_blur: backgroundSettings.blur ?? DEFAULT_BACKGROUND_SETTINGS.blur,
+    favorites_tree: favorites,
+    updated_at: now,
+  };
+
+  try {
+    await supabaseRestRequest(`/user_settings?user_id=eq.${encodeURIComponent(userId)}`, {
+      method: 'POST',
+      syncSettings,
+      accessToken: syncSession.accessToken,
+      prefer: 'resolution=merge-duplicates,return=minimal',
+      body: [settingsBody],
+    });
+  } catch (err) {
+    const fallbackBody = { ...settingsBody };
+    delete fallbackBody.favorites_tree;
+    await supabaseRestRequest(`/user_settings?user_id=eq.${encodeURIComponent(userId)}`, {
     method: 'POST',
     syncSettings,
     accessToken: syncSession.accessToken,
     prefer: 'resolution=merge-duplicates,return=minimal',
-    body: [{
-      user_id: userId,
-      theme,
-      lang,
-      background_image_url: backgroundSettings.imageUrl || backgroundSettings.imageDataUrl || '',
-      background_brightness: backgroundSettings.brightness ?? DEFAULT_BACKGROUND_SETTINGS.brightness,
-      background_blur: backgroundSettings.blur ?? DEFAULT_BACKGROUND_SETTINGS.blur,
-      updated_at: now,
-    }],
-  });
+      body: [fallbackBody],
+    });
+  }
 
   await supabaseRestRequest(`/social_links?user_id=eq.${encodeURIComponent(userId)}`, {
     method: 'POST',
@@ -441,8 +511,6 @@ async function pushLocalDataToSupabase() {
   });
 
   if (normalizedFavorites.length > 0) {
-    await chrome.storage.local.set({ favorites: normalizedFavorites });
-
     await supabaseRestRequest('/favorites?on_conflict=user_id,url', {
       method: 'POST',
       syncSettings,
@@ -561,9 +629,17 @@ async function pullCloudDataFromSupabase() {
   const socialRow = Array.isArray(socialRows) ? socialRows[0] : null;
   const cloudFavorites = Array.isArray(favoritesRows) ? favoritesRows : [];
   const cloudSnapshots = Array.isArray(snapshotRows) ? snapshotRows : [];
-  const localFavorites = await getFavorites();
+  const localFavoriteTree = await getFavorites();
+  const localFavorites = localFavoriteTree.filter((item) => item && item.type !== 'folder' && item.url);
+  const localFolders = localFavoriteTree.filter((item) => item && item.type === 'folder');
   const localSnapshots = await getWorkspaceSnapshots();
+  const cloudFavoriteTree = settingsRow && Array.isArray(settingsRow.favorites_tree)
+    ? settingsRow.favorites_tree
+    : null;
   const mergedFavorites = mergeFavorites(localFavorites, cloudFavorites);
+  const mergedFavoriteTree = cloudFavoriteTree
+    ? mergeFavoriteTrees(localFavoriteTree, cloudFavoriteTree)
+    : compactMixedFavoriteSlots([...mergedFavorites, ...localFolders]);
   const mergedSnapshots = mergeWorkspaceSnapshots(localSnapshots, cloudSnapshots);
 
   suppressAutoSync = true;
@@ -590,7 +666,7 @@ async function pullCloudDataFromSupabase() {
     }
 
     await chrome.storage.local.set({
-      favorites: mergedFavorites,
+      favorites: mergedFavoriteTree,
     });
     await saveWorkspaceSnapshots(mergedSnapshots);
     await saveSyncedFavoriteUrls(mergedFavorites);
@@ -627,7 +703,7 @@ async function renderSyncStatus() {
     if (syncTimeEl) syncTimeEl.textContent = t('syncNever');
     if (guestPanel) guestPanel.style.display = 'block';
     if (userPanel) userPanel.style.display = 'none';
-    if (backgroundPanel) backgroundPanel.style.display = 'none';
+    if (backgroundPanel) backgroundPanel.style.display = 'block';
     return;
   }
 
@@ -649,5 +725,5 @@ async function renderSyncStatus() {
   if (syncTimeEl) syncTimeEl.textContent = formatSyncTime(syncSettings.lastSyncAt);
   if (guestPanel) guestPanel.style.display = 'block';
   if (userPanel) userPanel.style.display = 'none';
-  if (backgroundPanel) backgroundPanel.style.display = 'none';
+  if (backgroundPanel) backgroundPanel.style.display = 'block';
 }

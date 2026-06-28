@@ -17,6 +17,7 @@ document.addEventListener('click', async (e) => {
   const actionEl = e.target.closest('[data-action]');
   if (!actionEl) {
     if (e.target.id === 'favoritesModal') { closeFavoriteModal(); return; }
+    if (e.target.id === 'favoriteFolderModal') { closeFavoriteFolderModal(); return; }
     if (e.target.id === 'socialsModal') {
       const modal = document.getElementById('socialsModal');
       if (modal) modal.style.display = 'none';
@@ -52,12 +53,17 @@ document.addEventListener('click', async (e) => {
     const urlInput = document.getElementById('backgroundUrlInput');
     const brightnessInput = document.getElementById('backgroundBrightnessInput');
     const blurInput = document.getElementById('backgroundBlurInput');
+    const weatherInput = document.getElementById('weatherEnabledInput');
+    const autoDeleteInput = document.getElementById('autoDeleteEmptyFoldersInput');
     const uploadInput = document.getElementById('backgroundUploadInput');
+    const { weatherEnabled = false, autoDeleteEmptyFolders = true } = await chrome.storage.local.get(['weatherEnabled', 'autoDeleteEmptyFolders']);
     if (syncEmailInput) syncEmailInput.value = (syncSession.user && syncSession.user.email) ? syncSession.user.email : '';
     if (syncPasswordInput) syncPasswordInput.value = '';
     if (urlInput) urlInput.value = settings.imageUrl || '';
     if (brightnessInput) brightnessInput.value = String(settings.brightness ?? DEFAULT_BACKGROUND_SETTINGS.brightness);
     if (blurInput) blurInput.value = String(settings.blur ?? DEFAULT_BACKGROUND_SETTINGS.blur);
+    if (weatherInput) weatherInput.checked = !!weatherEnabled;
+    if (autoDeleteInput) autoDeleteInput.checked = autoDeleteEmptyFolders !== false;
     if (uploadInput) {
       uploadInput.value = '';
       delete uploadInput.dataset.pendingImage;
@@ -345,6 +351,45 @@ document.addEventListener('click', async (e) => {
     return;
   }
 
+  if (action === 'open-favorite-folder') {
+    const folderId = actionEl.dataset.favId;
+    if (!folderId) return;
+    await openFavoriteFolderModal(folderId);
+    return;
+  }
+
+  if (action === 'close-favorite-folder') {
+    closeFavoriteFolderModal();
+    return;
+  }
+
+  if (action === 'rename-favorite-folder') {
+    beginInlineFolderRename();
+    return;
+  }
+
+  if (action === 'move-favorite-out-folder') {
+    e.preventDefault();
+    e.stopPropagation();
+    const folderId = actionEl.dataset.folderId;
+    const favId = actionEl.dataset.favId;
+    if (!folderId || !favId) return;
+    await moveFavoriteOutOfFolder(folderId, favId);
+    await renderFavoritesColumn();
+    const stillExists = await getFolder(folderId);
+    if (stillExists) await renderFavoriteFolderModal(folderId);
+    else closeFavoriteFolderModal();
+    showToast(t('movedOutOfFolder'));
+    return;
+  }
+
+  if (action === 'open-folder-favorite') {
+    const url = actionEl.dataset.url;
+    if (!url) return;
+    await chrome.tabs.create({ url, active: true });
+    return;
+  }
+
   // ---- Favorites: delete from edit modal ----
   if (action === 'delete-from-form') {
     const form = document.getElementById('favoritesForm');
@@ -360,6 +405,11 @@ document.addEventListener('click', async (e) => {
   // ---- Click on modal backdrop closes it ----
   if (e.target.id === 'favoritesModal') {
     closeFavoriteModal();
+    return;
+  }
+
+  if (e.target.id === 'favoriteFolderModal') {
+    closeFavoriteFolderModal();
     return;
   }
 
@@ -392,12 +442,13 @@ document.addEventListener('click', async (e) => {
     e.stopPropagation();
     const id = actionEl.dataset.favId;
     if (!id) return;
+    const itemType = actionEl.closest('.favorite-item')?.dataset.itemType || 'favorite';
     const existing = document.getElementById('favoritePopupMenu');
     if (existing && existing.dataset.favId === id) {
       closeFavoriteMenu();
     } else {
       closeFavoriteMenu();
-      openFavoriteMenu(actionEl, id);
+      openFavoriteMenu(actionEl, id, itemType);
     }
     return;
   }
@@ -409,12 +460,31 @@ document.addEventListener('click', async (e) => {
     if (id) await openEditFavorite(id);
     return;
   }
+  if (action === 'menu-rename-folder') {
+    const id = actionEl.dataset.favId;
+    closeFavoriteMenu();
+    const folder = id ? await getFolder(id) : null;
+    if (!folder) return;
+    await openFavoriteFolderModal(id);
+    beginInlineFolderRename();
+    return;
+  }
   if (action === 'menu-remove-favorite') {
     const id = actionEl.dataset.favId;
     closeFavoriteMenu();
     if (id) {
+      const folder = await getFolder(id);
+      if (folder) {
+        const ok = await showConfirm({
+          message: t('confirmDeleteFolder'),
+          okLabel: t('deleteFolder'),
+        });
+        if (!ok) return;
+      }
       await removeFavorite(id);
       await renderFavoritesColumn();
+      const modal = document.getElementById('favoriteFolderModal');
+      if (modal && modal.dataset.folderId === id) closeFavoriteFolderModal();
       showToast(t('removedFromFavorites'));
     }
     return;
@@ -445,8 +515,7 @@ document.addEventListener('click', async (e) => {
         okLabel: t('remove'),
       });
       if (!ok) return;
-      const favs = await getFavorites();
-      const fav  = favs.find(f => f.url === tabUrl);
+      const fav  = await findFavoriteByUrl(tabUrl);
       if (fav) await removeFavorite(fav.id);
       actionEl.classList.remove('active');
       showToast(t('removedFromFavorites'));
@@ -602,10 +671,10 @@ document.addEventListener('click', async (e) => {
 
   // ---- Close ALL open tabs ----
   if (action === 'close-all-open-tabs') {
-    const allUrls = openTabs
-      .filter(t => t.url && !t.url.startsWith('chrome') && !t.url.startsWith('about:'))
-      .map(t => t.url);
-    await closeTabsByUrls(allUrls);
+    const tabIds = getRealTabs()
+      .filter(t => !t.pinned)
+      .map(t => t.id);
+    await closeTabsByIds(tabIds);
     playCloseSound();
 
     document.querySelectorAll('#openTabsMissions .mission-card').forEach(c => {
@@ -733,7 +802,7 @@ function showConfirm({ message, okLabel, cancelLabel } = {}) {
 
 async function openEditFavorite(id) {
   const favs = await getFavorites();
-  const fav  = favs.find(f => f.id === id);
+  const fav  = favs.find(f => f.type !== 'folder' && f.id === id);
   if (!fav) return;
   document.getElementById('favoritesUrlInput').value   = fav.url || '';
   document.getElementById('favoritesTitleInput').value = fav.title || '';
@@ -750,15 +819,67 @@ async function openEditFavorite(id) {
   if (delBtn) delBtn.style.display = 'inline-flex';
 }
 
-function openFavoriteMenu(anchorEl, favId) {
+async function openFavoriteFolderModal(folderId) {
+  const modal = document.getElementById('favoriteFolderModal');
+  if (!modal) return;
+  await renderFavoriteFolderModal(folderId);
+  modal.style.display = 'flex';
+  requestAnimationFrame(() => modal.classList.add('open'));
+}
+
+function closeFavoriteFolderModal() {
+  const modal = document.getElementById('favoriteFolderModal');
+  if (!modal) return;
+  modal.classList.remove('open');
+  setTimeout(() => {
+    if (modal.classList.contains('open')) return;
+    modal.style.display = 'none';
+    modal.dataset.folderId = '';
+  }, 160);
+}
+
+function beginInlineFolderRename() {
+  const titleEl = document.getElementById('favoriteFolderTitle');
+  if (!titleEl) return;
+  titleEl.contentEditable = 'true';
+  titleEl.dataset.editing = '1';
+  titleEl.focus();
+  const selection = window.getSelection();
+  const range = document.createRange();
+  range.selectNodeContents(titleEl);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+async function commitInlineFolderRename() {
+  const modal = document.getElementById('favoriteFolderModal');
+  const titleEl = document.getElementById('favoriteFolderTitle');
+  const folderId = modal && modal.dataset.folderId;
+  if (!titleEl || !folderId || titleEl.dataset.editing !== '1') return;
+  titleEl.contentEditable = 'false';
+  delete titleEl.dataset.editing;
+  const title = titleEl.textContent.trim() || t('folderDefaultName');
+  await updateFolder(folderId, { title });
+  await renderFavoritesColumn();
+  await renderFavoriteFolderModal(folderId);
+  showToast(t('folderRenamed'));
+}
+
+function openFavoriteMenu(anchorEl, favId, itemType = 'favorite') {
+  const safeFavId = escapeAttr(favId);
   const menu = document.createElement('div');
   menu.id = 'favoritePopupMenu';
   menu.className = 'favorite-popup-menu';
   menu.dataset.favId = favId;
-  menu.innerHTML = `
-    <button class="favorite-popup-item" data-action="menu-edit-favorite"   data-fav-id="${favId}">${t('edit')}</button>
-    <button class="favorite-popup-item favorite-popup-item-danger" data-action="menu-remove-favorite" data-fav-id="${favId}">${t('remove')}</button>
-  `;
+  menu.innerHTML = itemType === 'folder'
+    ? `
+      <button class="favorite-popup-item" data-action="menu-rename-folder" data-fav-id="${safeFavId}">${t('renameFolder')}</button>
+      <button class="favorite-popup-item favorite-popup-item-danger" data-action="menu-remove-favorite" data-fav-id="${safeFavId}">${t('deleteFolder')}</button>
+    `
+    : `
+      <button class="favorite-popup-item" data-action="menu-edit-favorite" data-fav-id="${safeFavId}">${t('edit')}</button>
+      <button class="favorite-popup-item favorite-popup-item-danger" data-action="menu-remove-favorite" data-fav-id="${safeFavId}">${t('remove')}</button>
+    `;
   document.body.appendChild(menu);
 
   const r = anchorEl.getBoundingClientRect();
@@ -786,6 +907,27 @@ document.addEventListener('click', (e) => {
 
 // Escape closes whichever overlay is open.
 document.addEventListener('keydown', (e) => {
+  if (e.target && e.target.id === 'favoriteFolderTitle' && e.target.dataset.editing === '1') {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      void commitInlineFolderRename();
+      return;
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      const modal = document.getElementById('favoriteFolderModal');
+      const folderId = modal && modal.dataset.folderId;
+      if (folderId) void renderFavoriteFolderModal(folderId);
+      return;
+    }
+  }
+
+  if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.matches('[data-action="open-favorite-folder"], [data-action="open-folder-favorite"]')) {
+    e.preventDefault();
+    e.target.click();
+    return;
+  }
+
   if (isCommandPaletteOpen()) {
     const input = document.getElementById('commandPaletteInput');
     const matches = getCommandPaletteMatches(input ? input.value : '');
@@ -842,6 +984,8 @@ document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   const modal = document.getElementById('favoritesModal');
   if (modal && modal.style.display !== 'none') { closeFavoriteModal(); return; }
+  const folderModal = document.getElementById('favoriteFolderModal');
+  if (folderModal && folderModal.style.display !== 'none') { closeFavoriteFolderModal(); return; }
   const socialsModal = document.getElementById('socialsModal');
   if (socialsModal && socialsModal.style.display !== 'none') { socialsModal.style.display = 'none'; return; }
   const settingsModal = document.getElementById('settingsModal');
@@ -849,6 +993,12 @@ document.addEventListener('keydown', (e) => {
   const snapshotsModal = document.getElementById('snapshotsModal');
   if (snapshotsModal && snapshotsModal.style.display !== 'none') { snapshotsModal.style.display = 'none'; return; }
   closeFavoriteMenu();
+});
+
+document.addEventListener('focusout', (e) => {
+  if (e.target && e.target.id === 'favoriteFolderTitle' && e.target.dataset.editing === '1') {
+    void commitInlineFolderRename();
+  }
 });
 
 /**
@@ -975,15 +1125,32 @@ document.addEventListener('submit', async (e) => {
   if (e.target.id === 'settingsForm') {
     e.preventDefault();
     const uploadInput = document.getElementById('backgroundUploadInput');
+    const rawBackgroundUrl = document.getElementById('backgroundUrlInput')?.value.trim() || '';
     const settings = {
-      imageUrl: document.getElementById('backgroundUrlInput')?.value.trim() || '',
+      imageUrl: rawBackgroundUrl ? normalizeHttpUrl(rawBackgroundUrl) : '',
       imageDataUrl: (uploadInput && uploadInput.dataset.pendingImage) ? uploadInput.dataset.pendingImage : '',
       brightness: Number(document.getElementById('backgroundBrightnessInput')?.value || DEFAULT_BACKGROUND_SETTINGS.brightness),
       blur: Number(document.getElementById('backgroundBlurInput')?.value || DEFAULT_BACKGROUND_SETTINGS.blur),
     };
+    const weatherEnabled = !!document.getElementById('weatherEnabledInput')?.checked;
+    const autoDeleteEmptyFolders = !!document.getElementById('autoDeleteEmptyFoldersInput')?.checked;
+    if (weatherEnabled && chrome.permissions && chrome.permissions.request) {
+      try {
+        await chrome.permissions.request({ permissions: ['geolocation'] });
+      } catch {
+        // Keep the user's preference saved; the weather fetch will fail quietly
+        // until Chrome grants geolocation for the extension page.
+      }
+    }
     if (settings.imageUrl) settings.imageDataUrl = '';
     await saveBackgroundSettings(settings);
+    await chrome.storage.local.set({ weatherEnabled, autoDeleteEmptyFolders });
     applyBackgroundSettings(settings);
+    if (weatherEnabled) void ensureWeatherLoaded();
+    else {
+      currentWeatherHtml = '';
+      updateHeaderDateDisplay();
+    }
     if (uploadInput) delete uploadInput.dataset.pendingImage;
     const modal = document.getElementById('settingsModal');
     if (modal) modal.style.display = 'none';
@@ -1017,8 +1184,10 @@ document.addEventListener('submit', async (e) => {
   let   title      = titleInput.value.trim();
   if (!url) return;
 
-  if (!/^[a-z][a-z0-9+.-]*:/i.test(url)) {
-    url = 'https://' + url;
+  url = normalizeHttpUrl(url, { allowFile: true });
+  if (!url) {
+    showToast(t('invalidUrl'));
+    return;
   }
 
   if (!title) {
@@ -1066,13 +1235,31 @@ document.addEventListener('submit', async (e) => {
      - anywhere else       → no-op
    ---------------------------------------------------------------- */
 let _draggedFavId = null;
+let _draggedFolderFav = null;
 
 function clearDropMarkers() {
   document.querySelectorAll('.favorite-item.drop-target')
     .forEach(el => el.classList.remove('drop-target'));
+  document.querySelectorAll('.folder-favorite-item.drop-target')
+    .forEach(el => el.classList.remove('drop-target'));
+  document.querySelectorAll('.favorites-list.drop-target')
+    .forEach(el => el.classList.remove('drop-target'));
 }
 
 document.addEventListener('dragstart', (e) => {
+  const folderItem = e.target.closest('.folder-favorite-item');
+  if (folderItem) {
+    _draggedFolderFav = {
+      folderId: folderItem.dataset.folderId,
+      favId: folderItem.dataset.favId,
+    };
+    folderItem.classList.add('dragging');
+    document.body.classList.add('dragging-favorite');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', _draggedFolderFav.favId || '');
+    return;
+  }
+
   const item = e.target.closest('.favorite-item');
   if (!item) return;
   _draggedFavId = item.dataset.favId;
@@ -1085,12 +1272,35 @@ document.addEventListener('dragstart', (e) => {
 document.addEventListener('dragend', () => {
   document.querySelectorAll('.favorite-item.dragging')
     .forEach(el => el.classList.remove('dragging'));
+  document.querySelectorAll('.folder-favorite-item.dragging')
+    .forEach(el => el.classList.remove('dragging'));
   document.body.classList.remove('dragging-favorite');
   clearDropMarkers();
   _draggedFavId = null;
+  _draggedFolderFav = null;
 });
 
 document.addEventListener('dragover', (e) => {
+  if (_draggedFolderFav) {
+    const folderItem = e.target.closest('.folder-favorite-item');
+    if (folderItem && folderItem.dataset.favId !== _draggedFolderFav.favId) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      clearDropMarkers();
+      folderItem.classList.add('drop-target');
+      return;
+    }
+
+    const list = e.target.closest('.favorites-list');
+    if (list) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      clearDropMarkers();
+      list.classList.add('drop-target');
+      return;
+    }
+  }
+
   if (!_draggedFavId) return;
 
   const card = e.target.closest('.favorite-item');
@@ -1105,6 +1315,34 @@ document.addEventListener('dragover', (e) => {
 });
 
 document.addEventListener('drop', async (e) => {
+  if (_draggedFolderFav) {
+    const dragged = _draggedFolderFav;
+    _draggedFolderFav = null;
+    const folderItem = e.target.closest('.folder-favorite-item');
+    if (folderItem && folderItem.dataset.favId !== dragged.favId) {
+      e.preventDefault();
+      clearDropMarkers();
+      const changed = await reorderFavoriteInFolder(dragged.folderId, dragged.favId, folderItem.dataset.favId);
+      if (changed) await renderFavoriteFolderModal(dragged.folderId);
+      return;
+    }
+
+    const list = e.target.closest('.favorites-list');
+    if (list) {
+      e.preventDefault();
+      clearDropMarkers();
+      const changed = await moveFavoriteOutOfFolder(dragged.folderId, dragged.favId);
+      if (changed) {
+        await renderFavoritesColumn();
+        const folder = await getFolder(dragged.folderId);
+        if (folder) await renderFavoriteFolderModal(dragged.folderId);
+        else closeFavoriteFolderModal();
+        showToast(t('movedOutOfFolder'));
+      }
+      return;
+    }
+  }
+
   if (!_draggedFavId) return;
   const draggedId = _draggedFavId;
   _draggedFavId = null;
@@ -1113,17 +1351,24 @@ document.addEventListener('drop', async (e) => {
   if (card && card.dataset.favId && card.dataset.favId !== draggedId) {
     e.preventDefault();
     clearDropMarkers();
+    const targetId = card.dataset.favId;
     const favorites = await getFavorites();
-    const a = favorites.find(f => f.id === draggedId);
-    const b = favorites.find(f => f.id === card.dataset.favId);
-    if (a && b) {
-      const tmp = a.slot;
-      a.slot = b.slot;
-      b.slot = tmp;
-      const now = favoriteTimestamp();
-      a.updatedAt = now;
-      b.updatedAt = now;
-      await chrome.storage.local.set({ favorites });
+    const dragged = favorites.find(item => item.id === draggedId);
+    const target = favorites.find(item => item.id === targetId);
+    if (!dragged || !target) return;
+
+    let changed = false;
+    if (dragged.type !== 'folder' && target.type === 'folder') {
+      changed = await moveFavoriteIntoFolder(draggedId, targetId);
+      if (changed) showToast(t('addedToFolder'));
+    } else if (dragged.type !== 'folder' && target.type !== 'folder') {
+      changed = await createFolderWithFavorites(draggedId, targetId);
+      if (changed) showToast(t('folderCreated'));
+    } else {
+      changed = await swapFavoriteSlots(draggedId, targetId);
+    }
+
+    if (changed) {
       await renderFavoritesColumn();
     }
     return;

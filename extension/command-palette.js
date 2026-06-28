@@ -67,7 +67,7 @@ async function buildCommandPaletteItems() {
     id: String(tab.id || ''),
   }));
 
-  const favoriteItems = favorites.map(fav => makeCommandItem({
+  const favoriteItems = getFlatFavorites(favorites).map(fav => makeCommandItem({
     type: t('commandTypeFavorite'),
     title: fav.title || fav.url,
     subtitle: fav.url || '',
